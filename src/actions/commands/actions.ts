@@ -726,7 +726,7 @@ class CommandMoveHalfPageUp extends CommandEditorScroll {
 @RegisterAction
 export class CommandInsertAtCursor extends BaseCommand {
   modes = [ModeName.Normal];
-  keys = [['i'], ['<insert>']];
+  keys = [['l'], ['<insert>']];
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
     await vimState.setCurrentMode(ModeName.Insert);
@@ -2469,7 +2469,7 @@ async function selectLastSearchWord(vimState: VimState, direction: SearchDirecti
 @RegisterAction
 class CommandSelectNextLastSearchWord extends BaseCommand {
   modes = [ModeName.Normal, ModeName.Visual, ModeName.VisualBlock];
-  keys = ['g', 'n'];
+  keys = ['g', 'k'];
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
     return await selectLastSearchWord(vimState, SearchDirection.Forward);
@@ -2479,7 +2479,7 @@ class CommandSelectNextLastSearchWord extends BaseCommand {
 @RegisterAction
 class CommandSelectPreviousLastSearchWord extends BaseCommand {
   modes = [ModeName.Normal, ModeName.Visual, ModeName.VisualBlock];
-  keys = ['g', 'N'];
+  keys = ['g', 'K'];
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
     return await selectLastSearchWord(vimState, SearchDirection.Backward);
@@ -2653,7 +2653,7 @@ class CommandGoLastChange extends BaseCommand {
 @RegisterAction
 class CommandInsertAtLastChange extends BaseCommand {
   modes = [ModeName.Normal];
-  keys = ['g', 'i'];
+  keys = ['g', 'l'];
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
     const lastPos = vimState.historyTracker.getLastChangeEndPosition();
@@ -2670,7 +2670,7 @@ class CommandInsertAtLastChange extends BaseCommand {
 @RegisterAction
 export class CommandInsertAtFirstCharacter extends BaseCommand {
   modes = [ModeName.Normal];
-  keys = ['I'];
+  keys = ['L'];
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
     await vimState.setCurrentMode(ModeName.Insert);
@@ -2684,7 +2684,7 @@ export class CommandInsertAtFirstCharacter extends BaseCommand {
 class CommandInsertAtLineBegin extends BaseCommand {
   modes = [ModeName.Normal];
   mustBeFirstKey = true;
-  keys = ['g', 'I'];
+  keys = ['g', 'L'];
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
     await vimState.setCurrentMode(ModeName.Insert);
@@ -2910,7 +2910,7 @@ class CommandOnly extends BaseCommand {
 @RegisterAction
 class MoveToRightPane extends BaseCommand {
   modes = [ModeName.Normal, ModeName.Visual, ModeName.VisualLine];
-  keys = [['<C-w>', 'l'], ['<C-w>', '<right>'], ['<C-w l>'], ['<C-w>', '<C-l>']];
+  keys = [['<C-w>', 'i'], ['<C-w>', '<right>'], ['<C-w i>'], ['<C-w>', '<C-i>']];
   isJump = true;
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
@@ -2926,7 +2926,7 @@ class MoveToRightPane extends BaseCommand {
 @RegisterAction
 class MoveToLowerPane extends BaseCommand {
   modes = [ModeName.Normal, ModeName.Visual, ModeName.VisualLine];
-  keys = [['<C-w>', 'j'], ['<C-w>', '<down>'], ['<C-w j>'], ['<C-w>', '<C-j>']];
+  keys = [['<C-w>', 'n'], ['<C-w>', '<down>'], ['<C-w n>'], ['<C-w>', '<C-n>']];
   isJump = true;
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
@@ -2942,7 +2942,7 @@ class MoveToLowerPane extends BaseCommand {
 @RegisterAction
 class MoveToUpperPane extends BaseCommand {
   modes = [ModeName.Normal, ModeName.Visual, ModeName.VisualLine];
-  keys = [['<C-w>', 'k'], ['<C-w>', '<up>'], ['<C-w k>'], ['<C-w>', '<C-k>']];
+  keys = [['<C-w>', 'e'], ['<C-w>', '<up>'], ['<C-w e>'], ['<C-w>', '<C-e>']];
   isJump = true;
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
@@ -3646,7 +3646,7 @@ class ActionShiftDVisualBlock extends BaseCommand {
 @RegisterAction
 class ActionGoToInsertVisualBlockMode extends BaseCommand {
   modes = [ModeName.VisualBlock];
-  keys = ['I'];
+  keys = ['L'];
   runsOnceForEveryCursor() {
     return false;
   }
@@ -3765,7 +3765,7 @@ abstract class ActionGoToInsertVisualLineModeCommand extends BaseCommand {
 @RegisterAction
 export class ActionGoToInsertVisualLineMode extends ActionGoToInsertVisualLineModeCommand {
   modes = [ModeName.VisualLine];
-  keys = ['I'];
+  keys = ['L'];
 
   getCursorRangeForLine(line: vscode.TextLine): Range {
     const startCharacterPosition = new Position(
@@ -3790,7 +3790,7 @@ export class ActionGoToInsertVisualLineModeAppend extends ActionGoToInsertVisual
 @RegisterAction
 export class ActionGoToInsertVisualMode extends ActionGoToInsertVisualLineModeCommand {
   modes = [ModeName.Visual];
-  keys = ['I'];
+  keys = ['L'];
 
   getCursorRangeForLine(
     line: vscode.TextLine,

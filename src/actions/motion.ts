@@ -333,7 +333,7 @@ class MoveDownFoldFix extends MoveByScreenLineMaintainDesiredColumn {
 
 @RegisterAction
 class MoveDown extends BaseMovement {
-  keys = ['j'];
+  keys = ['n'];
   doesntChangeDesiredColumn = true;
 
   public async execAction(position: Position, vimState: VimState): Promise<Position | IMovement> {
@@ -362,7 +362,7 @@ class MoveUpByScreenLineMaintainDesiredColumn extends MoveByScreenLineMaintainDe
 
 @RegisterAction
 class MoveUp extends BaseMovement {
-  keys = ['k'];
+  keys = ['e'];
   doesntChangeDesiredColumn = true;
 
   public async execAction(position: Position, vimState: VimState): Promise<Position | IMovement> {
@@ -460,7 +460,7 @@ class RightArrowInReplaceMode extends ArrowsInReplaceMode {
 
 @RegisterAction
 class CommandNextSearchMatch extends BaseMovement {
-  keys = ['n'];
+  keys = ['k'];
   isJump = true;
 
   public async execAction(position: Position, vimState: VimState): Promise<Position> {
@@ -484,7 +484,7 @@ class CommandNextSearchMatch extends BaseMovement {
 
 @RegisterAction
 class CommandPreviousSearchMatch extends BaseMovement {
-  keys = ['N'];
+  keys = ['K'];
   isJump = true;
 
   public async execAction(position: Position, vimState: VimState): Promise<Position> {
@@ -558,7 +558,7 @@ class BackSpaceInNormalMode extends BaseMovement {
 
 @RegisterAction
 class MoveRight extends BaseMovement {
-  keys = ['l'];
+  keys = ['i'];
 
   public async execAction(position: Position, vimState: VimState): Promise<Position> {
     if (shouldWrapKey(vimState, this.keysPressed)) {
@@ -889,7 +889,7 @@ class MoveScreenLineCenter extends MoveByScreenLine {
 @RegisterAction
 export class MoveUpByScreenLine extends MoveByScreenLine {
   modes = [ModeName.Insert, ModeName.Normal, ModeName.Visual];
-  keys = [['g', 'k'], ['g', '<up>']];
+  keys = [['g', 'e'], ['g', '<up>']];
   movementType: CursorMovePosition = 'up';
   by: CursorMoveByUnit = 'wrappedLine';
   value = 1;
@@ -898,7 +898,7 @@ export class MoveUpByScreenLine extends MoveByScreenLine {
 @RegisterAction
 class MoveDownByScreenLine extends MoveByScreenLine {
   modes = [ModeName.Insert, ModeName.Normal, ModeName.Visual];
-  keys = [['g', 'j'], ['g', '<down>']];
+  keys = [['g', 'n'], ['g', '<down>']];
   movementType: CursorMovePosition = 'down';
   by: CursorMoveByUnit = 'wrappedLine';
   value = 1;
@@ -912,7 +912,7 @@ class MoveDownByScreenLine extends MoveByScreenLine {
 @RegisterAction
 class MoveUpByScreenLineVisualLine extends MoveByScreenLine {
   modes = [ModeName.VisualLine];
-  keys = [['g', 'k'], ['g', '<up>']];
+  keys = [['g', 'e'], ['g', '<up>']];
   movementType: CursorMovePosition = 'up';
   by: CursorMoveByUnit = 'line';
   value = 1;
@@ -921,7 +921,7 @@ class MoveUpByScreenLineVisualLine extends MoveByScreenLine {
 @RegisterAction
 class MoveDownByScreenLineVisualLine extends MoveByScreenLine {
   modes = [ModeName.VisualLine];
-  keys = [['g', 'j'], ['g', '<down>']];
+  keys = [['g', 'n'], ['g', '<down>']];
   movementType: CursorMovePosition = 'down';
   by: CursorMoveByUnit = 'line';
   value = 1;
@@ -930,7 +930,7 @@ class MoveDownByScreenLineVisualLine extends MoveByScreenLine {
 @RegisterAction
 class MoveUpByScreenLineVisualBlock extends BaseMovement {
   modes = [ModeName.VisualBlock];
-  keys = [['g', 'k'], ['g', '<up>']];
+  keys = [['g', 'e'], ['g', '<up>']];
   doesntChangeDesiredColumn = true;
 
   public async execAction(position: Position, vimState: VimState): Promise<Position | IMovement> {
@@ -946,7 +946,7 @@ class MoveUpByScreenLineVisualBlock extends BaseMovement {
 @RegisterAction
 class MoveDownByScreenLineVisualBlock extends BaseMovement {
   modes = [ModeName.VisualBlock];
-  keys = [['g', 'j'], ['g', '<down>']];
+  keys = [['g', 'n'], ['g', '<down>']];
   doesntChangeDesiredColumn = true;
 
   public async execAction(position: Position, vimState: VimState): Promise<Position | IMovement> {
@@ -978,7 +978,7 @@ class MoveScreenToRight extends MoveByScreenLine {
 @RegisterAction
 class MoveScreenToLeft extends MoveByScreenLine {
   modes = [ModeName.Insert, ModeName.Normal, ModeName.Visual, ModeName.VisualLine];
-  keys = ['z', 'l'];
+  keys = ['z', 'L'];
   movementType: CursorMovePosition = 'left';
   by: CursorMoveByUnit = 'character';
   value = 1;
@@ -1228,7 +1228,7 @@ class MoveFullWordBegin extends BaseMovement {
 
 @RegisterAction
 class MoveWordEnd extends BaseMovement {
-  keys = ['e'];
+  keys = ['j'];
 
   public async execAction(position: Position, vimState: VimState): Promise<Position> {
     return position.getCurrentWordEnd();
@@ -1243,7 +1243,7 @@ class MoveWordEnd extends BaseMovement {
 
 @RegisterAction
 class MoveFullWordEnd extends BaseMovement {
-  keys = ['E'];
+  keys = ['J'];
 
   public async execAction(position: Position, vimState: VimState): Promise<Position> {
     return position.getCurrentBigWordEnd();
@@ -1256,7 +1256,7 @@ class MoveFullWordEnd extends BaseMovement {
 
 @RegisterAction
 class MoveLastWordEnd extends BaseMovement {
-  keys = ['g', 'e'];
+  keys = ['g', 'j'];
 
   public async execAction(position: Position, vimState: VimState): Promise<Position> {
     return position.getLastWordEnd();
@@ -1265,7 +1265,7 @@ class MoveLastWordEnd extends BaseMovement {
 
 @RegisterAction
 class MoveLastFullWordEnd extends BaseMovement {
-  keys = ['g', 'E'];
+  keys = ['g', 'J'];
 
   public async execAction(position: Position, vimState: VimState): Promise<Position> {
     return position.getLastBigWordEnd();
@@ -1548,19 +1548,19 @@ export abstract class MoveInsideCharacter extends ExpandingSelection {
 
 @RegisterAction
 class MoveIParentheses extends MoveInsideCharacter {
-  keys = ['i', '('];
+  keys = ['l', '('];
   charToMatch = '(';
 }
 
 @RegisterAction
 class MoveIClosingParentheses extends MoveInsideCharacter {
-  keys = ['i', ')'];
+  keys = ['l', ')'];
   charToMatch = '(';
 }
 
 @RegisterAction
 class MoveIClosingParenthesesBlock extends MoveInsideCharacter {
-  keys = ['i', 'b'];
+  keys = ['l', 'b'];
   charToMatch = '(';
 }
 
@@ -1587,19 +1587,19 @@ class MoveAParenthesesBlock extends MoveInsideCharacter {
 
 @RegisterAction
 class MoveICurlyBrace extends MoveInsideCharacter {
-  keys = ['i', '{'];
+  keys = ['l', '{'];
   charToMatch = '{';
 }
 
 @RegisterAction
 class MoveIClosingCurlyBrace extends MoveInsideCharacter {
-  keys = ['i', '}'];
+  keys = ['l', '}'];
   charToMatch = '{';
 }
 
 @RegisterAction
 class MoveIClosingCurlyBraceBlock extends MoveInsideCharacter {
-  keys = ['i', 'B'];
+  keys = ['l', 'B'];
   charToMatch = '{';
 }
 
@@ -1626,13 +1626,13 @@ class MoveAClosingCurlyBraceBlock extends MoveInsideCharacter {
 
 @RegisterAction
 class MoveICaret extends MoveInsideCharacter {
-  keys = ['i', '<'];
+  keys = ['l', '<'];
   charToMatch = '<';
 }
 
 @RegisterAction
 class MoveIClosingCaret extends MoveInsideCharacter {
-  keys = ['i', '>'];
+  keys = ['l', '>'];
   charToMatch = '<';
 }
 
@@ -1652,13 +1652,13 @@ class MoveAClosingCaret extends MoveInsideCharacter {
 
 @RegisterAction
 class MoveISquareBracket extends MoveInsideCharacter {
-  keys = ['i', '['];
+  keys = ['l', '['];
   charToMatch = '[';
 }
 
 @RegisterAction
 class MoveIClosingSquareBraket extends MoveInsideCharacter {
-  keys = ['i', ']'];
+  keys = ['l', ']'];
   charToMatch = '[';
 }
 
@@ -1733,7 +1733,7 @@ export abstract class MoveQuoteMatch extends BaseMovement {
 
 @RegisterAction
 class MoveInsideSingleQuotes extends MoveQuoteMatch {
-  keys = ['i', "'"];
+  keys = ['l', "'"];
   charToMatch = "'";
   includeSurrounding = false;
 }
@@ -1747,7 +1747,7 @@ export class MoveASingleQuotes extends MoveQuoteMatch {
 
 @RegisterAction
 class MoveInsideDoubleQuotes extends MoveQuoteMatch {
-  keys = ['i', '"'];
+  keys = ['l', '"'];
   charToMatch = '"';
   includeSurrounding = false;
 }
@@ -1761,7 +1761,7 @@ export class MoveADoubleQuotes extends MoveQuoteMatch {
 
 @RegisterAction
 class MoveInsideBacktick extends MoveQuoteMatch {
-  keys = ['i', '`'];
+  keys = ['l', '`'];
   charToMatch = '`';
   includeSurrounding = false;
 }
@@ -1919,7 +1919,7 @@ abstract class MoveTagMatch extends ExpandingSelection {
 
 @RegisterAction
 export class MoveInsideTag extends MoveTagMatch {
-  keys = ['i', 't'];
+  keys = ['l', 't'];
   includeTag = false;
 }
 

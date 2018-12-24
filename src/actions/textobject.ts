@@ -250,7 +250,7 @@ export class SelectAnExpandingBlock extends ExpandingSelection {
 @RegisterAction
 export class SelectInnerWord extends TextObjectMovement {
   modes = [ModeName.Normal, ModeName.Visual];
-  keys = ['i', 'w'];
+  keys = ['l', 'w'];
 
   public async execAction(position: Position, vimState: VimState): Promise<IMovement> {
     let start: Position;
@@ -291,7 +291,7 @@ export class SelectInnerWord extends TextObjectMovement {
 @RegisterAction
 export class SelectInnerBigWord extends TextObjectMovement {
   modes = [ModeName.Normal, ModeName.Visual];
-  keys = ['i', 'W'];
+  keys = ['l', 'W'];
 
   public async execAction(position: Position, vimState: VimState): Promise<IMovement> {
     let start: Position;
@@ -388,7 +388,7 @@ export class SelectSentence extends TextObjectMovement {
 
 @RegisterAction
 export class SelectInnerSentence extends TextObjectMovement {
-  keys = ['i', 's'];
+  keys = ['l', 's'];
 
   public async execAction(position: Position, vimState: VimState): Promise<IMovement> {
     let start: Position;
@@ -465,7 +465,7 @@ export class SelectParagraph extends TextObjectMovement {
 
 @RegisterAction
 export class SelectInnerParagraph extends TextObjectMovement {
-  keys = ['i', 'p'];
+  keys = ['l', 'p'];
 
   public async execAction(position: Position, vimState: VimState): Promise<IMovement> {
     vimState.currentRegisterMode = RegisterMode.LineWise;
@@ -622,18 +622,18 @@ abstract class IndentObjectMatch extends TextObjectMovement {
 
 @RegisterAction
 class InsideIndentObject extends IndentObjectMatch {
-  keys = ['i', 'i'];
+  keys = ['l', 'l'];
 }
 
 @RegisterAction
 class InsideIndentObjectAbove extends IndentObjectMatch {
-  keys = ['a', 'i'];
+  keys = ['a', 'l'];
   includeLineAbove = true;
 }
 
 @RegisterAction
 class InsideIndentObjectBoth extends IndentObjectMatch {
-  keys = ['a', 'I'];
+  keys = ['a', 'L'];
   includeLineAbove = true;
   includeLineBelow = true;
 }
