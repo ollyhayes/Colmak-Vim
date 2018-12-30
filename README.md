@@ -1,3 +1,16 @@
+## Colmak-Vim
+This is a fork of the usual VSCodeVim emulator that defines the arrow keys at hnei instead of hjkl so they're in the correct place for colmak.
+
+Re-mappings - qwerty -> colmak:
+* n -> j (down)
+* e -> k (up)
+* i -> l (right)
+* j -> e (end of word)
+* k -> n (next in search)
+* l -> i (insert mode)
+
+## The original non-forked readme:
+
 <h2 align="center"><img src="https://raw.githubusercontent.com/VSCodeVim/Vim/master/images/icon.png" height="128"><br>VSCodeVim</h2>
 <p align="center"><strong>Vim emulation for Visual Studio Code</strong></p>
 
