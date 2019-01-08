@@ -8,21 +8,23 @@ import './src/actions/include-all';
 import * as _ from 'lodash';
 import * as vscode from 'vscode';
 
-import { configuration } from './src/configuration/configuration';
-import { commandLine } from './src/cmd_line/commandLine';
-import { Position } from './src/common/motion/position';
-import { EditorIdentity } from './src/editorIdentity';
-import { Globals } from './src/globals';
-import { GlobalState } from './src/state/globalState';
-import { Jump } from './src/jumps/jump';
-import { ModeName } from './src/mode/mode';
-import { ModeHandler } from './src/mode/modeHandler';
-import { Notation } from './src/configuration/notation';
-import { StatusBar } from './src/statusBar';
-import { taskQueue } from './src/taskQueue';
-import { ModeHandlerMap } from './src/mode/modeHandlerMap';
-import { logger } from './src/util/logger';
 import { CompositionState } from './src/state/compositionState';
+import { EditorIdentity } from './src/editorIdentity';
+import { GlobalState } from './src/state/globalState';
+import { Globals } from './src/globals';
+import { Jump } from './src/jumps/jump';
+import { ModeHandler } from './src/mode/modeHandler';
+import { ModeHandlerMap } from './src/mode/modeHandlerMap';
+import { ModeName } from './src/mode/mode';
+import { Notation } from './src/configuration/notation';
+import { Position } from './src/common/motion/position';
+import { StatusBar } from './src/statusBar';
+import { VsCodeContext } from './src/util/vscode-context';
+import { commandLine } from './src/cmd_line/commandLine';
+import { configuration } from './src/configuration/configuration';
+import { configurationValidator } from './src/configuration/configurationValidator';
+import { logger } from './src/util/logger';
+import { taskQueue } from './src/taskQueue';
 
 const globalState = new GlobalState();
 let extensionContext: vscode.ExtensionContext;
@@ -92,7 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
     event.contentChanges[0].range.start.line === event.contentChanges[0].range.end.line;
 
   vscode.workspace.onDidChangeTextDocument(async event => {
-    if (configuration.disableExt) {
+    if (configuration.disableExtension) {
       return;
     }
 
@@ -163,7 +165,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // window events
   vscode.window.onDidChangeActiveTextEditor(async () => {
-    if (configuration.disableExt) {
+    if (configuration.disableExtension) {
       return;
     }
 
@@ -191,7 +193,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (vscode.window.activeTextEditor !== undefined) {
         const mh: ModeHandler = await getAndUpdateModeHandler(true);
 
-        await mh.updateVimModeForKeybindings(mh.vimState.currentMode);
+        await VsCodeContext.Set('vim.mode', ModeName[mh.vimState.currentMode]);
 
         await mh.updateView(mh.vimState, { drawSelection: false, revealRange: false });
 
@@ -258,7 +260,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (mh.vimState.currentMode !== ModeName.Insert) {
         let text = compositionState.composingText;
         compositionState.reset();
-        await mh.handleMultipleKeyEvents(text.split(''));
+        mh.handleMultipleKeyEvents(text.split(''));
       }
     });
   });
@@ -285,9 +287,9 @@ export async function activate(context: vscode.ExtensionContext) {
           // Check if this is a vim command by looking for :
           if (command.command.slice(0, 1) === ':') {
             await commandLine.Run(command.command.slice(1, command.command.length), mh.vimState);
-            await mh.updateView(mh.vimState);
+            mh.updateView(mh.vimState);
           } else {
-            await vscode.commands.executeCommand(command.command, command.args);
+            vscode.commands.executeCommand(command.command, command.args);
           }
         }
       }
@@ -295,8 +297,8 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   registerCommand(context, 'toggleVim', async () => {
-    configuration.disableExt = !configuration.disableExt;
-    toggleExtension(configuration.disableExt, compositionState);
+    configuration.disableExtension = !configuration.disableExtension;
+    toggleExtension(configuration.disableExtension, compositionState);
   });
 
   for (const boundKey of configuration.boundKeyCombinations) {
@@ -309,12 +311,13 @@ export async function activate(context: vscode.ExtensionContext) {
     mh.updateView(mh.vimState, { drawSelection: false, revealRange: false });
   }
 
-  await commandLine.load();
-  // Initialize the search history
-  await globalState.loadSearchHistory();
-
-  // This is called last because getAndUpdateModeHandler() will change cursor
-  toggleExtension(configuration.disableExt, compositionState);
+  await Promise.all([
+    commandLine.load(),
+    globalState.load(),
+    configurationValidator.initialize(),
+    // This is called last because getAndUpdateModeHandler() will change cursor
+    toggleExtension(configuration.disableExtension, compositionState),
+  ]);
 }
 
 /**
@@ -324,7 +327,7 @@ export async function activate(context: vscode.ExtensionContext) {
  * @param isDisabled if true, sets VSCodeVim to Disabled mode; else sets to enabled mode
  */
 async function toggleExtension(isDisabled: boolean, compositionState: CompositionState) {
-  await vscode.commands.executeCommand('setContext', 'vim.active', !isDisabled);
+  await VsCodeContext.Set('vim.active', !isDisabled);
   if (!vscode.window.activeTextEditor) {
     // This was happening in unit tests.
     // If activate was called and no editor window is open, we can't properly initialize.
@@ -346,9 +349,8 @@ function overrideCommand(
   callback: (...args: any[]) => any
 ) {
   const disposable = vscode.commands.registerCommand(command, async args => {
-    if (configuration.disableExt) {
-      await vscode.commands.executeCommand('default:' + command, args);
-      return;
+    if (configuration.disableExtension) {
+      return vscode.commands.executeCommand('default:' + command, args);
     }
 
     if (!vscode.window.activeTextEditor) {
@@ -359,11 +361,10 @@ function overrideCommand(
       vscode.window.activeTextEditor.document &&
       vscode.window.activeTextEditor.document.uri.toString() === 'debug:input'
     ) {
-      await vscode.commands.executeCommand('default:' + command, args);
-      return;
+      return vscode.commands.executeCommand('default:' + command, args);
     }
 
-    callback(args);
+    return callback(args);
   });
   context.subscriptions.push(disposable);
 }
@@ -399,7 +400,3 @@ function handleContentChangedFromDisk(document: vscode.TextDocument): void {
     modeHandler.vimState.historyTracker.clear();
   });
 }
-
-process.on('unhandledRejection', function(reason: any, p: any) {
-  logger.error(`Unhandled Rejection at: Promise ${p}. Reason: ${reason}.`);
-});

@@ -1,49 +1,43 @@
 import * as vscode from 'vscode';
 import * as modes from './modes';
 
+import { Actions, BaseAction, KeypressState } from './../actions/base';
+import { BaseMovement, isIMovement } from './../actions/motion';
+import { CommandInsertInInsertMode, CommandInsertPreviousText } from './../actions/commands/insert';
+import { Decoration } from '../configuration/decoration';
+import { Globals } from '../globals';
+import { Jump } from '../jumps/jump';
+import { Mode, ModeName, VSCodeVimCursorType } from './mode';
+import { PairMatcher } from './../common/matching/matcher';
+import { Position, PositionDiff } from './../common/motion/position';
+import { Range } from './../common/motion/range';
+import { RecordedState } from './../state/recordedState';
+import { Register, RegisterMode } from './../register/register';
+import { Remappers } from '../configuration/remapper';
+import { StatusBar } from '../statusBar';
+import { TextEditor } from './../textEditor';
+import { VimState } from './../state/vimState';
+import { VsCodeContext } from '../util/vscode-context';
 import { commandLine } from '../cmd_line/commandLine';
 import { configuration } from '../configuration/configuration';
-import { Decoration } from '../configuration/decoration';
-import { Remappers } from '../configuration/remapper';
-import { Globals } from '../globals';
-import { StatusBar } from '../statusBar';
 import { getCursorsAfterSync } from '../util/util';
-import { Actions, BaseAction, KeypressState } from './../actions/base';
+import { logger } from '../util/logger';
+import { taskQueue } from './../taskQueue';
 import {
   BaseCommand,
   CommandQuitRecordMacro,
   DocumentContentChangeAction,
 } from './../actions/commands/actions';
-import { CommandInsertInInsertMode, CommandInsertPreviousText } from './../actions/commands/insert';
-import { BaseMovement, isIMovement } from './../actions/motion';
-import { PairMatcher } from './../common/matching/matcher';
-import { Position, PositionDiff } from './../common/motion/position';
-import { Range } from './../common/motion/range';
-import { Register, RegisterMode } from './../register/register';
-import { RecordedState } from './../state/recordedState';
-import { VimState } from './../state/vimState';
-import { taskQueue } from './../taskQueue';
-import { TextEditor } from './../textEditor';
 import {
   areAnyTransformationsOverlapping,
   isTextTransformation,
   TextTransformations,
 } from './../transformations/transformations';
-import { Mode, ModeName, VSCodeVimCursorType } from './mode';
-import { logger } from '../util/logger';
-import { Neovim } from '../neovim/neovim';
-import { Jump } from '../jumps/jump';
 
 export class ModeHandler implements vscode.Disposable {
   private _disposables: vscode.Disposable[] = [];
   private _modes: Mode[];
   private _remappers: Remappers;
-
-  /**
-   * Last vim.mode sent to vscode, for updating keybindings.
-   * It is static, as the context applies across editors.
-   */
-  private static _lastVimModeSetForKeybindings: ModeName;
 
   public vimState: VimState;
 
@@ -87,7 +81,7 @@ export class ModeHandler implements vscode.Disposable {
         // Handle scenarios where mouse used to change current position.
         const onChangeTextEditorSelection = vscode.window.onDidChangeTextEditorSelection(
           (e: vscode.TextEditorSelectionChangeEvent) => {
-            if (configuration.disableExt) {
+            if (configuration.disableExtension) {
               return;
             }
 
@@ -354,7 +348,7 @@ export class ModeHandler implements vscode.Disposable {
         this.vimState = await this.handleKeyEventHelper(key, this.vimState);
       }
     } catch (e) {
-      logger.error(`ModeHandler: error handling key=${key}. err=${e}. stack=${e.stack}.`);
+      logger.error(`ModeHandler: error handling key=${key}. err=${e}.`);
       throw e;
     }
 
@@ -495,6 +489,7 @@ export class ModeHandler implements vscode.Disposable {
         x.start.isEarlierThan(x.stop) ? x.withNewStop(x.stop.getLeftThroughLineBreaks(true)) : x
       );
     }
+
     if (action instanceof BaseMovement) {
       ({ vimState, recordedState } = await this.executeMovement(vimState, action));
       ranAction = true;
@@ -542,12 +537,12 @@ export class ModeHandler implements vscode.Disposable {
       this.IsModeWhereCmdVIsOverriden(vimState.currentMode) &&
       !this.IsModeWhereCmdVIsOverriden(prevState)
     ) {
-      await vscode.commands.executeCommand('setContext', 'vim.overrideCmdV', true);
+      await VsCodeContext.Set('vim.overrideCmdV', true);
     } else if (
       this.IsModeWhereCmdVIsOverriden(prevState) &&
       !this.IsModeWhereCmdVIsOverriden(vimState.currentMode)
     ) {
-      await vscode.commands.executeCommand('setContext', 'vim.overrideCmdV', false);
+      await VsCodeContext.Set('vim.overrideCmdV', false);
     }
 
     if (recordedState.operatorReadyToExecute(vimState.currentMode)) {
@@ -568,9 +563,9 @@ export class ModeHandler implements vscode.Disposable {
           : x
       );
     }
+
     // And then we have to do it again because an operator could
     // have changed it as well. (TODO: do you even decomposition bro)
-
     if (vimState.currentMode !== this.currentMode.name) {
       await this.setCurrentMode(vimState.currentMode);
 
@@ -655,29 +650,29 @@ export class ModeHandler implements vscode.Disposable {
     }
 
     // Ensure cursor is within bounds
+    if (!vimState.editor.document.isClosed) {
+      for (const { stop, i } of Range.IterateRanges(vimState.allCursors)) {
+        if (stop.line >= TextEditor.getLineCount()) {
+          vimState.allCursors[i] = vimState.allCursors[i].withNewStop(
+            vimState.cursorPosition.getDocumentEnd(vimState.editor)
+          );
+        }
 
-    for (const { stop, i } of Range.IterateRanges(vimState.allCursors)) {
-      if (stop.line >= TextEditor.getLineCount()) {
-        vimState.allCursors[i] = vimState.allCursors[i].withNewStop(
-          vimState.cursorPosition.getDocumentEnd()
-        );
-      }
+        const currentLineLength = TextEditor.getLineAt(stop).text.length;
 
-      const currentLineLength = TextEditor.getLineAt(stop).text.length;
-
-      if (
-        vimState.currentMode === ModeName.Normal &&
-        stop.character >= currentLineLength &&
-        currentLineLength > 0
-      ) {
-        vimState.allCursors[i] = vimState.allCursors[i].withNewStop(
-          stop.getLineEnd().getLeftThroughLineBreaks(true)
-        );
+        if (
+          vimState.currentMode === ModeName.Normal &&
+          stop.character >= currentLineLength &&
+          currentLineLength > 0
+        ) {
+          vimState.allCursors[i] = vimState.allCursors[i].withNewStop(
+            stop.getLineEnd().getLeftThroughLineBreaks(true)
+          );
+        }
       }
     }
 
     // Update the current history step to have the latest cursor position
-
     vimState.historyTracker.setLastHistoryEndPosition(vimState.allCursors.map(x => x.stop));
 
     if (this.currentMode.isVisualMode && !this.vimState.isRunningDotCommand) {
@@ -787,7 +782,7 @@ export class ModeHandler implements vscode.Disposable {
     let recordedState = vimState.recordedState;
 
     if (!recordedState.operator) {
-      console.error('recordedState.operator: ' + recordedState.operator);
+      logger.warn('recordedState.operator: ' + recordedState.operator);
       throw new Error("what in god's name. recordedState.operator is falsy.");
     }
 
@@ -800,7 +795,6 @@ export class ModeHandler implements vscode.Disposable {
     const resultingCursors: Range[] = [];
     let i = 0;
 
-    let resultingModeName: ModeName;
     let startingModeName = vimState.currentMode;
 
     for (let { start, stop } of vimState.allCursors) {
@@ -843,8 +837,6 @@ export class ModeHandler implements vscode.Disposable {
           transformation.cursorIndex = recordedState.operator.multicursorIndex;
         }
       }
-
-      resultingModeName = resultVimState.currentMode;
 
       let resultingRange = new Range(
         resultVimState.cursorStartPosition,
@@ -904,7 +896,7 @@ export class ModeHandler implements vscode.Disposable {
         case 'moveCursor':
           break;
         default:
-          console.warn(`Unhandled text transformation type: ${command.type}.`);
+          logger.warn(`modeHandler: Unhandled text transformation type: ${command.type}.`);
           break;
       }
 
@@ -1046,7 +1038,7 @@ export class ModeHandler implements vscode.Disposable {
           }
           break;
         default:
-          console.warn(`Unhandled text transformation type: ${command.type}.`);
+          logger.warn(`modeHandler: Unhandled text transformation type: ${command.type}.`);
           break;
       }
     }
@@ -1434,24 +1426,7 @@ export class ModeHandler implements vscode.Disposable {
 
     this._renderStatusBar();
 
-    await this.updateVimModeForKeybindings(this.vimState.currentMode);
-  }
-
-  /**
-   * Let vscode know what our current mode is by setting vim.mode.
-   * This is used to determine keybindings, as seen in package.json.
-   * Applies across editors.
-   * @param mode New (current) mode
-   */
-  public async updateVimModeForKeybindings(mode: ModeName): Promise<void> {
-    // This can be an expensive operation (sometimes taking 40-60ms),
-    // so we only want to send it when it actually changes, which should
-    // include key events as well as changing or opening tabs.
-    if (ModeHandler._lastVimModeSetForKeybindings !== mode) {
-      await vscode.commands.executeCommand('setContext', 'vim.mode', ModeName[mode]);
-      // There doesn't seem to be a "getContext" available to extensions, so track ourselves.
-      ModeHandler._lastVimModeSetForKeybindings = mode;
-    }
+    await VsCodeContext.Set('vim.mode', ModeName[this.vimState.currentMode]);
   }
 
   private _renderStatusBar(): void {
