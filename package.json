@@ -4,7 +4,7 @@
   "description": "Colmak-Vim emulation for Visual Studio Code",
   "icon": "images/icon.png",
   "publisher": "ollyhayes",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "galleryBanner": {
     "color": "#e3f4ff",
     "theme": "light"
@@ -532,6 +532,11 @@
           "description": "Regex matches for JumpToAnywhere motion",
           "default": "\\b[A-Za-z0-9]|[A-Za-z0-9]\\b|_.|#.|[a-z][A-Z]"
         },
+        "vim.replaceWithRegister": {
+          "type": "boolean",
+          "description": "Enable the ReplaceWithRegister plugin for Vim.",
+          "default": false
+        },
         "vim.sneak": {
           "type": "boolean",
           "description": "Enable the Sneak plugin for Vim.",
@@ -584,32 +589,50 @@
           "default": false
         },
         "vim.statusBarColors.normal": {
-          "type": ["string", "array"],
+          "type": [
+            "string",
+            "array"
+          ],
           "description": "Status bar color when in Normal mode",
           "default": "#005f5f"
         },
         "vim.statusBarColors.insert": {
-          "type": ["string", "array"],
+          "type": [
+            "string",
+            "array"
+          ],
           "description": "Status bar color when in Insert mode",
           "default": "#5f0000"
         },
         "vim.statusBarColors.visual": {
-          "type": ["string", "array"],
+          "type": [
+            "string",
+            "array"
+          ],
           "description": "Status bar color when in Visual mode",
           "default": "#5f00af"
         },
         "vim.statusBarColors.visualline": {
-          "type": ["string", "array"],
+          "type": [
+            "string",
+            "array"
+          ],
           "description": "Status bar color when in VisualLine mode",
           "default": "#005f5f"
         },
         "vim.statusBarColors.visualblock": {
-          "type": ["string", "array"],
+          "type": [
+            "string",
+            "array"
+          ],
           "description": "Status bar color when in VisualBlock mode",
           "default": "#86592d"
         },
         "vim.statusBarColors.replace": {
-          "type": ["string", "array"],
+          "type": [
+            "string",
+            "array"
+          ],
           "description": "Status bar color when in Replace mode",
           "default": "#00000"
         },
@@ -684,7 +707,7 @@
         },
         "vim.autoSwitchInputMethod.defaultIM": {
           "type": "string",
-          "description": "The input method for your normal mode, find more information here:https://github.com/VSCodeVim/Vim#use-im-select",
+          "description": "The input method for your normal mode, find more information here: https://github.com/VSCodeVim/Vim#input-method",
           "default": ""
         },
         "vim.autoSwitchInputMethod.switchIMCmd": {
@@ -725,7 +748,7 @@
   "dependencies": {
     "appdirectory": "0.1.0",
     "diff-match-patch": "1.0.4",
-    "lodash": "4.17.11",
+    "lodash": "4.17.15",
     "mkdirp": "0.5.1",
     "neovim": "4.5.0",
     "untildify": "4.0.0",
@@ -735,10 +758,10 @@
   "devDependencies": {
     "@types/diff": "4.0.2",
     "@types/diff-match-patch": "1.0.32",
-    "@types/lodash": "4.14.130",
-    "@types/mocha": "5.2.6",
-    "@types/node": "10.12.27",
-    "@types/sinon": "7.0.11",
+    "@types/lodash": "4.14.136",
+    "@types/mocha": "5.2.7",
+    "@types/node": "12.6.8",
+    "@types/sinon": "7.0.13",
     "gulp": "4.0.2",
     "gulp-bump": "3.1.3",
     "gulp-git": "2.9.0",
@@ -747,12 +770,12 @@
     "gulp-tslint": "8.1.4",
     "gulp-typescript": "5.0.1",
     "minimist": "1.2.0",
-    "mocha": "6.1.4",
+    "mocha": "6.2.0",
     "plugin-error": "1.0.1",
-    "prettier": "1.17.1",
+    "prettier": "1.18.2",
     "sinon": "7.3.2",
-    "tslint": "5.16.0",
-    "typescript": "3.4.5",
-    "vscode": "1.1.34"
+    "tslint": "5.18.0",
+    "typescript": "3.5.3",
+    "vscode": "1.1.35"
   }
 }

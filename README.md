@@ -48,6 +48,7 @@ VSCodeVim is a Vim emulator for [Visual Studio Code](https://code.visualstudio.c
   - [vim-sneak](#vim-sneak)
   - [CamelCaseMotion](#camelcasemotion)
   - [Input Method](#input-method)
+  - [ReplaceWithRegister](#replacewithregister)
 - [VSCodeVim tricks](#-vscodevim-tricks)
 - [F.A.Q / Troubleshooting](#-faq)
 - [Contributing](#️-contributing)
@@ -330,7 +331,7 @@ Custom remappings are defined on a per-mode basis.
 
 1.  Are your configurations correct?
 
-    Adjust the extension's [logging level](#vimdebuglogginglevel) to 'debug', restart VS Code. As each remapped configuration is loaded, it is outputted to console. In the Developer Tools console, do you see any errors?
+    Adjust the extension's [logging level](#vscodevim-settings) to 'debug', restart VS Code. As each remapped configuration is loaded, it is outputted to console. In the Developer Tools console, do you see any errors?
 
     ```console
     debug: Remapper: normalModeKeyBindingsNonRecursive. before=0. after=^.
@@ -342,7 +343,7 @@ Custom remappings are defined on a per-mode basis.
 
 2.  Does the extension handle the keys you are trying to remap?
 
-    VSCodeVim explicitly instructs VS Code which key events we care about through the [package.json](https://github.com/VSCodeVim/Vim/blob/1a5f358a1a57c62d5079093ad0dd12c2bf018bba/package.json#L53). If the key you are trying to remap is a key in which vim/vscodevim generally does not handle, then it's most likely that this extension does not receive those key events from VS Code. With [logging level](#vimdebuglogginglevel) adjusted to 'debug', as you press keys, you should see output similar to:
+    VSCodeVim explicitly instructs VS Code which key events we care about through the [package.json](https://github.com/VSCodeVim/Vim/blob/1a5f358a1a57c62d5079093ad0dd12c2bf018bba/package.json#L53). If the key you are trying to remap is a key in which vim/vscodevim generally does not handle, then it's most likely that this extension does not receive those key events from VS Code. With [logging level](#vscodevim-settings) adjusted to 'debug', as you press keys, you should see output similar to:
 
     ```console
     debug: ModeHandler: handling key=A.
@@ -599,6 +600,23 @@ Any third-party program can be used to switch input methods. The following will 
       ```
 
 The `{im}` argument above is a command-line option that will be passed to `im-select` denoting the input method to switch to. If using an alternative program to switch input methods, you should add a similar option to the configuration. For example, if the program's usage is `my-program -s imKey` to switch input method, the `vim.autoSwitchInputMethod.switchIMCmd` should be `/path/to/my-program -s {im}`.
+
+### ReplaceWithRegister
+
+Based on [ReplaceWithRegister](https://github.com/vim-scripts/ReplaceWithRegister), an easy way to replace existing text with the contents of a register.
+
+| Setting                 | Description                        | Type    | Default Value |
+| ----------------------- | ---------------------------------- | ------- | ------------- |
+| vim.replaceWithRegister | Enable/disable ReplaceWithRegister | Boolean | false         |
+
+Once active, type `gr` (say "go replace") followed by a motion to describe the text you want replaced by the contents of the register.
+
+| Motion Command | Description                                                                        |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `gr<motion>`   | Replace the text described by the motion with the contents of the default register |
+| `"agr<motion>` | Replace the text described by the motion with the contents of the `a` register     |
+| `grr`          | Replace the currentline with the contents of the default register                  |
+| `<count>grr`   | Replace the specified number of lines with the contents of the default register    |
 
 ## 🎩 VSCodeVim tricks!
 

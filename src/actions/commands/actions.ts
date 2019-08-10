@@ -738,7 +738,7 @@ class CommandMoveHalfPageUp extends CommandEditorScroll {
     let firstLine = editor.visibleRanges[0].start.line;
     let currentSelectionLine = vimState.cursorStopPosition.line;
     let timesToRepeat = vimState.recordedState.count || 1;
-    lineOffset = firstLine === 0 ? 0 : (currentSelectionLine - firstLine);
+    lineOffset = firstLine === 0 ? 0 : currentSelectionLine - firstLine;
 
     await vscode.commands.executeCommand('editorScroll', {
       to: this.to,
@@ -1916,7 +1916,7 @@ class CommandTabInCommandline extends BaseCommand {
     return this.keysPressed[0] === '\n';
   }
 
-  private autoComplete(completionItems: any, vimState: VimState) {
+  private autoComplete(completionItems: string[], vimState: VimState) {
     if (commandLine.lastKeyPressed !== '<tab>') {
       if (/ /g.test(vimState.currentCommandlineText)) {
         // The regex here will match any text after the space or any text after the last / if it is present
@@ -1970,15 +1970,15 @@ class CommandTabInCommandline extends BaseCommand {
       vimState = this.autoComplete(commands, vimState);
     } else {
       // File Completion
-      let completeFiles: fs.Dirent[];
       const search = <RegExpExecArray>/.* (.*\/)/g.exec(vimState.currentCommandlineText);
-      let searchString = search !== null ? search[1] : '';
+      const searchString = search !== null ? search[1] : '';
+      const fullPath = GetAbsolutePath(searchString);
+      const fileNames = fs
+        .readdirSync(fullPath, { withFileTypes: true })
+        .filter(fileEnt => fileEnt.isFile())
+        .map(fileEnt => fileEnt.name);
 
-      let fullPath = GetAbsolutePath(searchString);
-
-      completeFiles = fs.readdirSync(fullPath, { withFileTypes: true });
-
-      vimState = this.autoComplete(completeFiles, vimState);
+      vimState = this.autoComplete(fileNames, vimState);
     }
 
     commandLine.lastKeyPressed = key;
@@ -2148,6 +2148,20 @@ class CommandDot extends BaseCommand {
     vimState.recordedState.transformations.push({
       type: 'dot',
     });
+
+    return vimState;
+  }
+}
+
+@RegisterAction
+class CommandRepeatSubstitution extends BaseCommand {
+  modes = [ModeName.Normal];
+  keys = ['&'];
+
+  public async exec(position: Position, vimState: VimState): Promise<VimState> {
+    // Parsing the command from a string, while not ideal, is currently
+    // necessary to make this work with and without neovim integration
+    await commandLine.Run('s', vimState);
 
     return vimState;
   }
@@ -2510,10 +2524,9 @@ class CommandChangeToLineEnd extends BaseCommand {
   modes = [ModeName.Normal];
   keys = ['C'];
   runsOnceForEachCountPrefix = false;
-  mustBeFirstKey = true;
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
-    let count = vimState.recordedState.count || 1;
+    const count = vimState.recordedState.count || 1;
 
     return new operator.ChangeOperator().run(
       vimState,
@@ -2765,14 +2778,9 @@ class CommandGoToDefinition extends BaseCommand {
   isJump = true;
 
   public async exec(position: Position, vimState: VimState): Promise<VimState> {
-    const oldActiveEditor = vimState.editor;
-
     await vscode.commands.executeCommand('editor.action.goToDeclaration');
-    // `executeCommand` returns immediately before cursor is updated
-    // wait for the editor to update before updating the vim state
-    // https://github.com/VSCodeVim/Vim/issues/3277
-    await waitForCursorSync(1000);
-    if (oldActiveEditor === vimState.editor) {
+
+    if (vimState.editor === vscode.window.activeTextEditor) {
       vimState.cursorStopPosition = Position.FromVSCodePosition(vimState.editor.selection.start);
     }
 
