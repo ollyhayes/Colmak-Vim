@@ -1,7 +1,7 @@
-## Colmak-Vim
-This is a fork of the usual VSCodeVim emulator that defines the arrow keys at hnei instead of hjkl so they're in the correct place for colmak.
+## Colemak-Vim
+This is a fork of the usual VSCodeVim emulator that defines the arrow keys at hnei instead of hjkl so they're in the correct place for colemak.
 
-Re-mappings - qwerty -> colmak:
+Re-mappings - qwerty -> colemak:
 * n -> j (down)
 * e -> k (up)
 * i -> l (right)
