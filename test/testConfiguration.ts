@@ -21,6 +21,7 @@ export class Configuration implements IConfiguration {
   replaceWithRegister = false;
   sneak = false;
   sneakUseIgnorecaseAndSmartcase = false;
+  sneakReplacesF = false;
   surround = true;
   easymotion = false;
   easymotionMarkerBackgroundColor = '';
@@ -61,9 +62,11 @@ export class Configuration implements IConfiguration {
     loggingLevelForConsole: 'debug';
   };
   searchHighlightColor = 'rgba(150, 150, 255, 0.3)';
+  searchHighlightTextColor = '';
   highlightedyank: {
     enable: false;
     color: 'rgba(250, 240, 170, 0.5)';
+    textColor: '';
     duration: 200;
   };
   tabstop = 2;
@@ -78,13 +81,14 @@ export class Configuration implements IConfiguration {
   foldfix = false;
   disableExtension = false;
   enableNeovim = false;
-  neovimPath = 'nvim';
-  substituteGlobalFlag = false;
+  neovimPath = '';
+  gdefault = false;
+  substituteGlobalFlag = false; // Deprecated in favor of gdefault
   cursorStylePerMode: IModeSpecificStrings<string> = {
     normal: 'line',
     insert: 'block',
     visual: 'underline',
-    visualline: 'thin-lin',
+    visualline: 'line-thin',
     visualblock: 'block-outline',
     replace: 'underline-thin,',
   };
@@ -104,4 +108,7 @@ export class Configuration implements IConfiguration {
   wrapKeys = {};
   report = 2;
   digraphs: {};
+  wrapscan = true;
+  scroll = 20;
+  startofline = true;
 }

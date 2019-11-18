@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as modes from './modes';
 
 import { Actions, BaseAction, KeypressState } from './../actions/base';
-import { BaseMovement, isIMovement } from './../actions/motion';
+import { BaseMovement, isIMovement } from '../actions/baseMotion';
 import { CommandInsertInInsertMode, CommandInsertPreviousText } from './../actions/commands/insert';
 import { Jump } from '../jumps/jump';
 import { Logger } from '../util/logger';
@@ -1380,8 +1380,7 @@ export class ModeHandler implements vscode.Disposable {
         : [];
     this.vimState.editor.setDecorations(decoration.EasyMotion, easyMotionHighlightRanges);
 
-    for (let i = 0; i < this.vimState.postponedCodeViewChanges.length; i++) {
-      let viewChange = this.vimState.postponedCodeViewChanges[i];
+    for (const viewChange of this.vimState.postponedCodeViewChanges) {
       await vscode.commands.executeCommand(viewChange.command, viewChange.args);
       vimState.cursors = await getCursorsAfterSync();
     }

@@ -134,7 +134,7 @@ These settings are specific to VSCodeVim.
 | vim.overrideCopy                 | Override VS Code's copy command with our own, which works correctly with VSCodeVim. If cmd-c/ctrl-c is giving you issues, set this to false and complain [here](https://github.com/Microsoft/vscode/issues/217).                                                                                                                                                                                                                 | Boolean | false                                 |
 | vim.searchHighlightColor         | Set the color of search highlights                                                                                                                                                                                                                                                                                                                                                                                               | String  | `editor.findMatchHighlightBackground` |
 | vim.startInInsertMode            | Start in Insert mode instead of Normal Mode                                                                                                                                                                                                                                                                                                                                                                                      | Boolean | false                                 |
-| vim.substituteGlobalFlag         | Similar to Vim's `gdefault` setting. `/g` flag in a substitute command replaces all occurrences in the line. Without this flag, replacement occurs only for the first occurrence in each line. With this setting enabled, the `g` is on by default.                                                                                                                                                                              | Boolean | false                                 |
+| vim.gdefault                     | `/g` flag in a substitute command replaces all occurrences in the line. Without this flag, replacement occurs only for the first occurrence in each line. With this setting enabled, the `g` is on by default.                                                                                                                                                                                                                   | Boolean | false                                 |
 | vim.useCtrlKeys                  | Enable Vim ctrl keys overriding common VS Code operations such as copy, paste, find, etc.                                                                                                                                                                                                                                                                                                                                        | Boolean | true                                  |
 | vim.visualstar                   | In visual mode, start a search with `*` or `#` using the current selection                                                                                                                                                                                                                                                                                                                                                       | Boolean | false                                 |
 | vim.highlightedyank.enable       | Enable highlighting when yanking                                                                                                                                                                                                                                                                                                                                                                                                 | Boolean | false                                 |
@@ -150,10 +150,10 @@ To leverage neovim for Ex-commands,
 1.  Install [neovim](https://github.com/neovim/neovim/wiki/Installing-Neovim)
 2.  Modify the following configurations:
 
-| Setting          | Description                    | Type    | Default Value |
-| ---------------- | ------------------------------ | ------- | ------------- |
-| vim.enableNeovim | Enable Neovim                  | Boolean | false         |
-| vim.neovimPath   | Full path to neovim executable | String  |               |
+| Setting          | Description                                                                                                             | Type    | Default Value |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- | ------- | ------------- |
+| vim.enableNeovim | Enable Neovim                                                                                                           | Boolean | false         |
+| vim.neovimPath   | Full path to neovim executable. If left empty, PATH environment variable will be automatically checked for neovim path. | String  |               |
 
 Here's some ideas on what you can do with neovim integration:
 
@@ -515,12 +515,12 @@ Based on [vim-sneak](https://github.com/justinmk/vim-sneak), it allows for jumpi
 
 Once sneak is active, initiate motions using the following commands. For operators sneak uses `z` instead of `s` because `s` is already taken by the surround plugin.
 
-| Motion Command            | Description                                                            |
-| ------------------------- | ---------------------------------------------------------------------- |
-| `s<char><char>`           | Move forward to the first occurence of `<char><char>`                  |
-| `S<char><char>`           | Move backward to the first occurence of `<char><char>`                 |
-| `<operator>z<char><char>` | Perform `<operator>` forward to the first occurence of `<char><char>`  |
-| `<operator>Z<char><char>` | Perform `<operator>` backward to the first occurence of `<char><char>` |
+| Motion Command            | Description                                                             |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `s<char><char>`           | Move forward to the first occurrence of `<char><char>`                  |
+| `S<char><char>`           | Move backward to the first occurrence of `<char><char>`                 |
+| `<operator>z<char><char>` | Perform `<operator>` forward to the first occurrence of `<char><char>`  |
+| `<operator>Z<char><char>` | Perform `<operator>` backward to the first occurrence of `<char><char>` |
 
 ### CamelCaseMotion
 

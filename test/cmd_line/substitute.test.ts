@@ -13,7 +13,7 @@ import {
 import { getTestingFunctions } from '../testSimplifier';
 
 suite('Basic substitute', () => {
-  let { newTest, newTestOnly } = getTestingFunctions();
+  const { newTest, newTestOnly, newTestSkip } = getTestingFunctions();
   let modeHandler: ModeHandler;
 
   setup(async () => {
@@ -219,9 +219,9 @@ suite('Basic substitute', () => {
     assertEqualLines(['dbc', 'dbc', 'abc']);
   });
 
-  suite('Effects of substituteGlobalFlag=true', () => {
+  suite('Effects of gdefault=true', () => {
     setup(async () => {
-      Globals.mockConfiguration.substituteGlobalFlag = true;
+      Globals.mockConfiguration.gdefault = true;
       await reloadConfiguration();
     });
 

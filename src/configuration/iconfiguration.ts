@@ -54,6 +54,11 @@ export interface IHighlightedYankConfiguration {
   color: string;
 
   /**
+   * Color of the text being highlighted.
+   */
+  textColor: string | undefined;
+
+  /**
    * Duration in milliseconds of the yank highlight.
    */
   duration: number;
@@ -134,6 +139,11 @@ export interface IConfiguration {
   sneakUseIgnorecaseAndSmartcase: boolean;
 
   /**
+   * Use single-character `sneak` instead of Vim's native `f`"
+   */
+  sneakReplacesF: boolean;
+
+  /**
    * Use surround plugin?
    */
   surround: boolean;
@@ -206,6 +216,7 @@ export interface IConfiguration {
    * Color of search highlights.
    */
   searchHighlightColor: string;
+  searchHighlightTextColor: string;
 
   /**
    * Yank highlight settings.
@@ -277,9 +288,10 @@ export interface IConfiguration {
   neovimPath: string;
 
   /**
-   * Automatically apply the /g flag to substitute commands.
+   * Automatically apply the `/g` flag to substitute commands.
    */
-  substituteGlobalFlag: boolean;
+  gdefault: boolean;
+  substituteGlobalFlag: boolean; // Deprecated in favor of gdefault
 
   /**
    * InputMethodSwicher
@@ -319,4 +331,22 @@ export interface IConfiguration {
    * User-defined digraphs
    */
   digraphs: { [shortcut: string]: Digraph };
+
+  /**
+   * Searches wrap around the end of the file.
+   */
+  wrapscan: boolean;
+
+  /**
+   * Number of lines to scroll with CTRL-U and CTRL-D commands. Set to 0 to use a half page scroll.
+   */
+  scroll: number;
+
+  /**
+   * When `true` the commands listed below move the cursor to the first non-blank of the line. When
+   * `false` the cursor is kept in the same column (if possible). This applies to the commands:
+   * `<C-d>`, `<C-u>`, `<C-b>`, `<C-f>`, `G`, `H`, `M`, `L`, `gg`, and to the commands `d`, `<<`
+   * and `>>` with a linewise operator.
+   */
+  startofline: boolean;
 }

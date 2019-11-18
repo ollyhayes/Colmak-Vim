@@ -10,7 +10,6 @@
  * Undo/Redo will advance forward or backwards through Steps.
  */
 import DiffMatchPatch = require('diff-match-patch');
-import * as _ from 'lodash';
 import * as vscode from 'vscode';
 
 import { Position } from './../common/motion/position';
@@ -351,10 +350,7 @@ export class HistoryTracker {
       name: markName,
       isUppercaseMark: markName === markName.toUpperCase(),
     };
-    const previousIndex = _.findIndex(
-      this.currentHistoryStep.marks,
-      mark => mark.name === markName
-    );
+    const previousIndex = this.currentHistoryStep.marks.findIndex(mark => mark.name === markName);
 
     if (previousIndex !== -1) {
       this.currentHistoryStep.marks[previousIndex] = newMark;
@@ -367,7 +363,7 @@ export class HistoryTracker {
    * Retrieves a mark.
    */
   getMark(markName: string): IMark {
-    return <IMark>_.find(this.currentHistoryStep.marks, mark => mark.name === markName);
+    return <IMark>this.currentHistoryStep.marks.find(mark => mark.name === markName);
   }
 
   getMarks(): IMark[] {
@@ -671,11 +667,18 @@ export class HistoryTracker {
     if (this.currentHistoryStepIndex === 0) {
       return undefined;
     }
+
     const lastChangeIndex = this.historySteps[this.currentHistoryStepIndex].changes.length;
     if (lastChangeIndex === 0) {
       return undefined;
     }
-    return this.historySteps[this.currentHistoryStepIndex].changes[lastChangeIndex - 1].end();
+
+    const lastChange = this.historySteps[this.currentHistoryStepIndex].changes[lastChangeIndex - 1];
+    if (lastChange.isAdd) {
+      return lastChange.end();
+    }
+
+    return lastChange.start;
   }
 
   getLastHistoryStartPosition(): Position[] | undefined {
@@ -684,6 +687,19 @@ export class HistoryTracker {
     }
 
     return this.historySteps[this.currentHistoryStepIndex].cursorStart;
+  }
+
+  getLastChangeStartPosition(): Position | undefined {
+    if (this.currentHistoryStepIndex === 0) {
+      return undefined;
+    }
+
+    const lastChangeIndex = this.historySteps[this.currentHistoryStepIndex].changes.length;
+    if (lastChangeIndex === 0) {
+      return undefined;
+    }
+
+    return this.historySteps[this.currentHistoryStepIndex].changes[lastChangeIndex - 1].start;
   }
 
   setLastHistoryEndPosition(pos: Position[]) {
