@@ -9,7 +9,7 @@ Re-mappings - qwerty -> colemak:
 * k -> n (next in search)
 * l -> i (insert mode)
 
-## The original non-forked readme:
+## Original overview:
 
 <h2 align="center"><img src="https://raw.githubusercontent.com/VSCodeVim/Vim/master/images/icon.png" height="128"><br>VSCodeVim</h2>
 <p align="center"><strong>Vim emulation for Visual Studio Code</strong></p>
