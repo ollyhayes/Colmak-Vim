@@ -5,6 +5,7 @@ import { ValidatorResults } from './iconfigurationValidator';
 import { VsCodeContext } from '../util/vscode-context';
 import { configurationValidator } from './configurationValidator';
 import { decoration } from './decoration';
+import { vimrc } from './vimrc';
 import {
   IConfiguration,
   IKeyRemapping,
@@ -14,6 +15,7 @@ import {
   IHighlightedYankConfiguration,
   ICamelCaseMotionConfiguration,
 } from './iconfiguration';
+import { Mode } from '../mode/mode';
 
 const packagejson: {
   contributes: {
@@ -84,6 +86,10 @@ class Configuration implements IConfiguration {
         }
         this[option] = val;
       }
+    }
+
+    if (this.vimrc.enable) {
+      await vimrc.load(this);
     }
 
     this.leader = Notation.NormalizeKey(this.leader, this.leaderDefault);
@@ -238,11 +244,7 @@ class Configuration implements IConfiguration {
     loggingLevelForConsole: 'error',
   };
 
-  @overlapSetting({
-    settingName: 'findMatchHighlightBackground',
-    defaultValue: 'rgba(150, 150, 255, 0.3)',
-  })
-  searchHighlightColor: string;
+  searchHighlightColor = '';
   searchHighlightTextColor = '';
 
   highlightedyank: IHighlightedYankConfiguration = {
@@ -271,14 +273,24 @@ class Configuration implements IConfiguration {
   @overlapSetting({
     settingName: 'lineNumbers',
     defaultValue: true,
-    map: new Map([['on', true], ['off', false], ['relative', false], ['interval', false]]),
+    map: new Map([
+      ['on', true],
+      ['off', false],
+      ['relative', false],
+      ['interval', false],
+    ]),
   })
   number: boolean;
 
   @overlapSetting({
     settingName: 'lineNumbers',
     defaultValue: false,
-    map: new Map([['on', false], ['off', false], ['relative', true], ['interval', false]]),
+    map: new Map([
+      ['on', false],
+      ['off', false],
+      ['relative', true],
+      ['interval', false],
+    ]),
   })
   relativenumber: boolean;
 
@@ -302,6 +314,11 @@ class Configuration implements IConfiguration {
 
   enableNeovim = false;
   neovimPath = '';
+
+  vimrc = {
+    enable: false,
+    path: '',
+  };
 
   digraphs = {};
 
@@ -332,8 +349,8 @@ class Configuration implements IConfiguration {
     replace: undefined,
   };
 
-  getCursorStyleForMode(modeName: string): vscode.TextEditorCursorStyle | undefined {
-    let cursorStyle = this.cursorStylePerMode[modeName.toLowerCase()];
+  getCursorStyleForMode(modeName: Mode): vscode.TextEditorCursorStyle | undefined {
+    let cursorStyle = this.cursorStylePerMode[modeName.toString().toLowerCase()];
     if (cursorStyle) {
       return this.cursorStyleFromString(cursorStyle);
     }
@@ -348,6 +365,8 @@ class Configuration implements IConfiguration {
   normalModeKeyBindingsNonRecursive: IKeyRemapping[] = [];
   visualModeKeyBindings: IKeyRemapping[] = [];
   visualModeKeyBindingsNonRecursive: IKeyRemapping[] = [];
+  commandLineModeKeyBindings: IKeyRemapping[] = [];
+  commandLineModeKeyBindingsNonRecursive: IKeyRemapping[] = [];
 
   insertModeKeyBindingsMap: Map<string, IKeyRemapping>;
   insertModeKeyBindingsNonRecursiveMap: Map<string, IKeyRemapping>;
@@ -355,6 +374,8 @@ class Configuration implements IConfiguration {
   normalModeKeyBindingsNonRecursiveMap: Map<string, IKeyRemapping>;
   visualModeKeyBindingsMap: Map<string, IKeyRemapping>;
   visualModeKeyBindingsNonRecursiveMap: Map<string, IKeyRemapping>;
+  commandLineModeKeyBindingsMap: Map<string, IKeyRemapping>;
+  commandLineModeKeyBindingsNonRecursiveMap: Map<string, IKeyRemapping>;
 
   private static unproxify(obj: Object): Object {
     let result = {};
