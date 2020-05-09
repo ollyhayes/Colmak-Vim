@@ -21,7 +21,7 @@ const packagejson: {
   contributes: {
     keybindings: VSCodeKeybinding[];
   };
-} = require('../../../package.json');
+} = require('../../package.json');
 
 type OptionValue = number | string | boolean;
 
@@ -349,8 +349,8 @@ class Configuration implements IConfiguration {
     replace: undefined,
   };
 
-  getCursorStyleForMode(modeName: Mode): vscode.TextEditorCursorStyle | undefined {
-    let cursorStyle = this.cursorStylePerMode[modeName.toString().toLowerCase()];
+  getCursorStyleForMode(modeName: string): vscode.TextEditorCursorStyle | undefined {
+    const cursorStyle = this.cursorStylePerMode[modeName.toLowerCase()];
     if (cursorStyle) {
       return this.cursorStyleFromString(cursorStyle);
     }
@@ -395,9 +395,9 @@ function overlapSetting(args: {
   defaultValue: OptionValue;
   map?: Map<string | number | boolean, string | number | boolean>;
 }) {
-  return function(target: any, propertyKey: string) {
+  return function (target: any, propertyKey: string) {
     Object.defineProperty(target, propertyKey, {
-      get: function() {
+      get: function () {
         // retrieve value from vim configuration
         // if the value is not defined or empty
         // look at the equivalent `editor` setting
@@ -414,7 +414,7 @@ function overlapSetting(args: {
 
         return val;
       },
-      set: function(value) {
+      set: function (value) {
         // synchronize the vim setting with the `editor` equivalent
         this['_' + propertyKey] = value;
 

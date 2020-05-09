@@ -160,4 +160,63 @@ suite('Mode Visual Block', () => {
     keysPressed: '<C-v>jjllold',
     end: ['|f', 'b', 'b'],
   });
+
+  newTest({
+    title: 'd deletes block',
+    start: ['11111', '2|2222', '33333', '44444', '55555'],
+    keysPressed: '<C-v>jjlld',
+    end: ['11111', '2|2', '33', '44', '55555'],
+  });
+
+  newTest({
+    title: 'x deletes block',
+    start: ['11111', '2|2222', '33333', '44444', '55555'],
+    keysPressed: '<C-v>jjllx',
+    end: ['11111', '2|2', '33', '44', '55555'],
+  });
+
+  newTest({
+    title: 'X deletes block',
+    start: ['11111', '2|2222', '33333', '44444', '55555'],
+    keysPressed: '<C-v>jjllX',
+    end: ['11111', '2|2', '33', '44', '55555'],
+  });
+
+  newTest({
+    title: 'Select register using " works in visual block mode',
+    start: ['abcde', '0|1234', 'abcde', '01234'],
+    keysPressed: '<C-v>llj"ayGo<C-r>a<Esc>',
+    end: ['abcde', '01234', 'abcde', '01234', '123', 'bcd', '|'],
+  });
+
+  newTest({
+    title: "Can handle 'J' when the entire visual block is on the same line",
+    start: ['one', '|two', 'three', 'four'],
+    keysPressed: '<C-v>lJ',
+    end: ['one', 'two| three', 'four'],
+    endMode: Mode.Normal,
+  });
+
+  newTest({
+    title: "Can handle 'J' when the visual block spans multiple lines",
+    start: ['o|ne', 'two', 'three', 'four'],
+    keysPressed: '<C-v>jjlJ',
+    end: ['one two| three', 'four'],
+    endMode: Mode.Normal,
+  });
+
+  newTest({
+    title: "Can handle 'J' when start position of the visual block is below the stop",
+    start: ['one', 'two', 't|hree', 'four'],
+    keysPressed: '<C-v>kkJ',
+    end: ['one two| three', 'four'],
+    endMode: Mode.Normal,
+  });
+
+  newTest({
+    title: 'Can handle ~/g~ in visual block mode',
+    start: ['|OnE', 'tWo', 'ThReE', 'fOuR'],
+    keysPressed: '<C-v>jl~jjl<C-v>jlg~',
+    end: ['oNE', 'Two', 'T|HreE', 'foUR'],
+  });
 });

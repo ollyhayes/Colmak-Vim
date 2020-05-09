@@ -7,18 +7,12 @@ import { Globals } from '../src/globals';
 import { Mode } from '../src/mode/mode';
 import { ModeHandler } from '../src/mode/modeHandler';
 import { TextEditor } from '../src/textEditor';
-import { waitForCursorSync } from '../src/util/util';
-import { assertEqualLines, setupWorkspace } from './testUtils';
+import { assertEqualLines } from './testUtils';
 import { globalState } from '../src/state/globalState';
 
 export function getTestingFunctions() {
   const getNiceStack = (stack: string | undefined): string => {
-    return stack
-      ? stack
-          .split('\n')
-          .splice(2, 1)
-          .join('\n')
-      : 'no stack available :(';
+    return stack ? stack.split('\n').splice(2, 1).join('\n') : 'no stack available :(';
   };
 
   const newTest = (testObj: ITestObject): void => {
@@ -130,7 +124,7 @@ class TestObjectHelper {
     for (let i = 0; i < lines.length; i++) {
       const columnIdx = lines[i].indexOf('|');
       if (columnIdx >= 0) {
-        ret.position = ret.position.withLine(i).withColumn(columnIdx);
+        ret.position = new Position(i, columnIdx);
         ret.success = true;
       }
     }
@@ -248,13 +242,11 @@ async function testIt(modeHandler: ModeHandler, testObj: ITestObject): Promise<v
   await modeHandler.handleKeyEvent('<Esc>');
 
   // Insert all the text as a single action.
-  await modeHandler.vimState.editor.edit(builder => {
+  await modeHandler.vimState.editor.edit((builder) => {
     builder.insert(new Position(0, 0), testObj.start.join('\n').replace('|', ''));
   });
 
   await modeHandler.handleMultipleKeyEvents(['<Esc>', 'g', 'g']);
-
-  await waitForCursorSync();
 
   // Since we bypassed VSCodeVim to add text,
   // we need to tell the history tracker that we added it.
@@ -263,8 +255,6 @@ async function testIt(modeHandler: ModeHandler, testObj: ITestObject): Promise<v
 
   // move cursor to start position using 'hjkl'
   await modeHandler.handleMultipleKeyEvents(helper.getKeyPressesToMoveToStartPosition());
-
-  await waitForCursorSync();
 
   Globals.mockModeHandler = modeHandler;
 
@@ -305,15 +295,15 @@ async function testIt(modeHandler: ModeHandler, testObj: ITestObject): Promise<v
   // jumps: check jumps are correct if given
   if (testObj.jumps !== undefined) {
     assert.deepEqual(
-      jumpTracker.jumps.map(j => lines[j.position.line] || '<MISSING>'),
-      testObj.jumps.map(t => t.replace('|', '')),
+      jumpTracker.jumps.map((j) => lines[j.position.line] || '<MISSING>'),
+      testObj.jumps.map((t) => t.replace('|', '')),
       'Incorrect jumps found'
     );
 
     const stripBar = (text: string | undefined) => (text ? text.replace('|', '') : text);
     const actualJumpPosition =
       (jumpTracker.currentJump && lines[jumpTracker.currentJump.position.line]) || '<FRONT>';
-    const expectedJumpPosition = stripBar(testObj.jumps.find(t => t.includes('|'))) || '<FRONT>';
+    const expectedJumpPosition = stripBar(testObj.jumps.find((t) => t.includes('|'))) || '<FRONT>';
 
     assert.deepEqual(
       actualJumpPosition.toString(),

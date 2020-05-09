@@ -29,8 +29,6 @@ export interface IMovement {
    */
   failed?: boolean;
 
-  diff?: PositionDiff;
-
   // It /so/ annoys me that I have to put this here.
   registerMode?: RegisterMode;
 }
@@ -52,11 +50,6 @@ export abstract class BaseMovement extends BaseAction {
    * running the repetition.
    */
   isRepeat = false;
-
-  /**
-   * Whether we should change desiredColumn in VimState.
-   */
-  public doesntChangeDesiredColumn = false;
 
   /**
    * This is for commands like $ which force the desired column to be at
@@ -126,6 +119,10 @@ export abstract class BaseMovement extends BaseAction {
       result = await this.createMovementResult(position, vimState, recordedState, lastIteration);
 
       if (result instanceof Position) {
+        /**
+         * This position will be passed to the `motion` on the next iteration,
+         * it may cause some issues when count > 1.
+         */
         position = result;
       } else if (isIMovement(result)) {
         if (prevResult && result.failed) {
