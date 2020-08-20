@@ -1,4 +1,4 @@
-import { PositionDiff, Position } from '../common/motion/position';
+import { Position } from '../common/motion/position';
 import { RegisterMode } from '../register/register';
 import { BaseAction } from './base';
 import { Mode } from '../mode/mode';
@@ -108,7 +108,7 @@ export abstract class BaseMovement extends BaseAction {
   ): Promise<Position | IMovement> {
     let recordedState = vimState.recordedState;
     let result: Position | IMovement = new Position(0, 0); // bogus init to satisfy typechecker
-    let prevResult: IMovement | undefined = undefined;
+    let prevResult: IMovement = { start: position, stop: position, failed: true };
     let firstMovementStart: Position = new Position(position.line, position.character);
 
     count = clamp(count, this.minCount, this.maxCount);
@@ -124,8 +124,8 @@ export abstract class BaseMovement extends BaseAction {
          * it may cause some issues when count > 1.
          */
         position = result;
-      } else if (isIMovement(result)) {
-        if (prevResult && result.failed) {
+      } else {
+        if (result.failed) {
           return prevResult;
         }
 

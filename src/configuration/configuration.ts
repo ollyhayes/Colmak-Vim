@@ -193,16 +193,20 @@ class Configuration implements IConfiguration {
 
   surround = true;
 
+  argumentObjectSeparators = [','];
+  argumentObjectOpeningDelimiters = ['(', '['];
+  argumentObjectClosingDelimiters = [')', ']'];
+
   easymotion = false;
   easymotionMarkerBackgroundColor = '';
   easymotionMarkerForegroundColorOneChar = '#ff0000';
   easymotionMarkerForegroundColorTwoChar = '#ffa500';
   easymotionMarkerWidthPerChar = 8;
-  easymotionMarkerHeight = 14;
+  easymotionDimBackground = true;
   easymotionMarkerFontFamily = 'Consolas';
   easymotionMarkerFontSize = '14';
   easymotionMarkerFontWeight = 'normal';
-  easymotionMarkerYOffset = 0;
+  easymotionMarkerMargin = 0;
   easymotionKeys = 'hklyuiopnm,qwertzxcvbasdgjf;';
   easymotionJumpToAnywhereRegex = '\\b[A-Za-z0-9]|[A-Za-z0-9]\\b|_.|#.|[a-z][A-Z]';
 

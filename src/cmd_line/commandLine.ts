@@ -10,6 +10,12 @@ import { configuration } from '../configuration/configuration';
 import { Register } from '../register/register';
 import { RecordedState } from '../state/recordedState';
 
+interface INVim {
+  run(vimState: VimState, command: string): Promise<{ statusBarText: string; error: boolean }>;
+
+  dispose(): void;
+}
+
 class CommandLine {
   private _history: CommandLineHistory;
   private readonly _logger = Logger.get('CommandLine');
@@ -50,11 +56,6 @@ class CommandLine {
 
     if (command.startsWith(':')) {
       command = command.slice(1);
-    }
-
-    if ('help'.startsWith(command.split(/\s/)[0])) {
-      StatusBar.setText(vimState, `:help Not supported.`, true);
-      return;
     }
 
     this._history.add(command);

@@ -1,6 +1,6 @@
 import { VimState } from '../../state/vimState';
 import { PairMatcher } from './../../common/matching/matcher';
-import { Position, PositionDiff } from './../../common/motion/position';
+import { Position, PositionDiff, sorted } from './../../common/motion/position';
 import { Range } from './../../common/motion/range';
 import { configuration } from './../../configuration/configuration';
 import { Mode } from './../../mode/mode';
@@ -228,7 +228,7 @@ class CommandSurroundModeStartVisual extends BaseCommand {
     vimState.recordedState.surroundKeys.push('S');
     vimState.recordedState.surroundKeyIndexStart = vimState.keyHistory.length;
 
-    let [start, end] = Position.sorted(vimState.cursorStartPosition, vimState.cursorStopPosition);
+    let [start, end] = sorted(vimState.cursorStartPosition, vimState.cursorStopPosition);
     if (vimState.currentMode === Mode.VisualLine) {
       [start, end] = [start.getLineBegin(), end.getLineEnd()];
     }
@@ -294,13 +294,16 @@ export class CommandSurroundAddToReplacement extends BaseCommand {
     // Convert a few shortcuts to the correct surround characters when NOT entering a tag
     if (vimState.surround.replacement.length === 0) {
       if (stringToAdd === 'b') {
-        stringToAdd = '(';
+        stringToAdd = ')';
       }
       if (stringToAdd === 'B') {
-        stringToAdd = '{';
+        stringToAdd = '}';
       }
       if (stringToAdd === 'r') {
-        stringToAdd = '[';
+        stringToAdd = ']';
+      }
+      if (stringToAdd === 'a') {
+        stringToAdd = '>';
       }
     }
 
