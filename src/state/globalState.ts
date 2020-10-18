@@ -53,8 +53,8 @@ class GlobalState {
    */
   public hl = true;
 
-  public async load() {
-    this._searchHistory = new SearchHistory();
+  public async load(context: vscode.ExtensionContext) {
+    this._searchHistory = new SearchHistory(context);
     this._searchHistory
       .get()
       .forEach((val) =>
@@ -79,7 +79,7 @@ class GlobalState {
     const prevSearchString =
       this.searchStatePrevious.length === 0
         ? undefined
-        : this.searchStatePrevious[this.searchStatePrevious.length - 1]!.searchString;
+        : this.searchStatePrevious[this.searchStatePrevious.length - 1].searchString;
     // Store this search if different than previous
     if (searchState.searchString !== prevSearchString) {
       this.searchStatePrevious.push(searchState);
