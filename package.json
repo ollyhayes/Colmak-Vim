@@ -4,7 +4,7 @@
   "description": "Colemak-Vim emulation for Visual Studio Code",
   "icon": "images/icon.png",
   "publisher": "ollyhayes",
-  "version": "1.17.1",
+  "version": "1.18.5",
   "galleryBanner": {
     "color": "#e3f4ff",
     "theme": "light"
@@ -33,8 +33,8 @@
   ],
   "extensionKind": [
     "ui",
-    "workspace",
-    "web"
+    "web",
+    "workspace"
   ],
   "sideEffects": false,
   "activationEvents": [
@@ -46,10 +46,6 @@
   "browser": "./out/extensionWeb",
   "contributes": {
     "commands": [
-      {
-        "command": "vim.remap",
-        "title": "Vim: Remap any key combination that VS Code supports to Vim motions/operators/ExCommands/macro."
-      },
       {
         "command": "toggleVim",
         "title": "Vim: Toggle Vim Mode"
@@ -362,7 +358,7 @@
       {
         "key": "cmd+v",
         "command": "extension.vim_cmd+v",
-        "when": "editorTextFocus && vim.active && vim.use<D-v> && vim.overrideCmdV && !inDebugRepl"
+        "when": "editorTextFocus && vim.active && vim.use<D-v> && vim.mode == 'CommandlineInProgress' !inDebugRepl || editorTextFocus && vim.active && vim.use<D-v> && vim.mode == 'SearchInProgressMode' && !inDebugRepl"
       },
       {
         "key": "ctrl+alt+down",
@@ -1036,11 +1032,6 @@
     "test": "node ./out/test/runTest.js",
     "forceprettier": "gulp forceprettier"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "pretty-quick --staged"
-    }
-  },
   "dependencies": {
     "diff-match-patch": "1.0.5",
     "lodash": "^4.17.20",
@@ -1054,34 +1045,33 @@
     "@types/diff": "4.0.2",
     "@types/diff-match-patch": "1.0.32",
     "@types/glob": "7.1.3",
-    "@types/lodash": "4.14.161",
-    "@types/mocha": "8.0.3",
+    "@types/lodash": "4.14.165",
+    "@types/mocha": "8.2.0",
     "@types/node": "12.12.31",
-    "@types/sinon": "9.0.5",
+    "@types/sinon": "9.0.9",
     "@types/vscode": "1.42.0",
     "clean-webpack-plugin": "3.0.0",
     "event-stream": "4.0.1",
     "gulp": "4.0.2",
     "gulp-bump": "3.2.0",
     "gulp-git": "2.10.1",
-    "gulp-sourcemaps": "2.6.5",
+    "gulp-sourcemaps": "3.0.0",
     "gulp-tag-version": "1.3.1",
     "gulp-tslint": "8.1.4",
     "gulp-typescript": "5.0.1",
-    "husky": "4.3.0",
     "minimist": "1.2.5",
-    "mocha": "8.1.3",
+    "mocha": "8.2.1",
     "plugin-error": "1.0.1",
-    "prettier": "2.1.2",
-    "pretty-quick": "3.0.2",
-    "sinon": "9.0.3",
-    "ts-loader": "8.0.4",
+    "prettier": "2.2.1",
+    "sinon": "9.2.1",
+    "ts-loader": "8.0.9",
     "tslint": "6.1.3",
-    "typescript": "4.0.3",
-    "vscode-test": "1.4.0",
-    "webpack": "4.44.2",
-    "webpack-cli": "3.3.12",
-    "webpack-merge": "5.1.4",
-    "webpack-stream": "6.1.0"
+    "typescript": "4.1.2",
+    "vsce": "1.81.1",
+    "vscode-test": "1.4.1",
+    "webpack": "5.10.0",
+    "webpack-cli": "4.2.0",
+    "webpack-merge": "5.5.0",
+    "webpack-stream": "6.1.1"
   }
 }

@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { Position } from '../../common/motion/position';
 import { configuration } from '../../configuration/configuration';
 import { Mode } from '../../mode/mode';
 import { Register, RegisterMode } from '../../register/register';
@@ -9,6 +8,7 @@ import { BaseOperator } from '../operator';
 import { RegisterAction } from './../base';
 import { StatusBar } from '../../statusBar';
 import { VimError, ErrorCode } from '../../error';
+import { Position } from 'vscode';
 
 @RegisterAction
 export class ReplaceOperator extends BaseOperator {
@@ -35,7 +35,7 @@ export class ReplaceOperator extends BaseOperator {
     }
 
     const replaceWith = register.text as string;
-    await TextEditor.replace(range, replaceWith);
+    await TextEditor.replace(vimState.editor, range, replaceWith);
     await vimState.setCurrentMode(Mode.Normal);
     updateCursorPosition(vimState, range, replaceWith);
   }

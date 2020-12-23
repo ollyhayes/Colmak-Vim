@@ -1,5 +1,4 @@
 import { VimState } from '../../../state/vimState';
-import { Position } from './../../../common/motion/position';
 import { configuration } from './../../../configuration/configuration';
 import { Mode, isVisualMode } from './../../../mode/mode';
 import { RegisterAction, BaseCommand } from './../../base';
@@ -12,6 +11,7 @@ import {
 import { globalState } from '../../../state/globalState';
 import { TextEditor } from '../../../textEditor';
 import { MarkerGenerator } from './markerGenerator';
+import { Position } from 'vscode';
 
 export interface EasymotionTrigger {
   key: string;
@@ -93,7 +93,7 @@ abstract class BaseEasyMotionCommand extends BaseCommand {
           const marker = vimState.easyMotion.markers[0];
           // Set cursor position based on marker entered
           vimState.cursorStopPosition = marker.position;
-          vimState.easyMotion.clearDecorations();
+          vimState.easyMotion.clearDecorations(vimState.editor);
         } else {
           // Store mode to return to after performing easy motion
           vimState.easyMotion.previousMode = vimState.currentMode;
@@ -116,19 +116,25 @@ function getMatchesForString(
       return [];
     case ' ':
       // Searching for space should only find the first space
-      return vimState.easyMotion.sortedSearch(position, new RegExp(' {1,}', 'g'), options);
+      return vimState.easyMotion.sortedSearch(
+        vimState,
+        position,
+        new RegExp(' {1,}', 'g'),
+        options
+      );
     default:
       // Search all occurences of the character pressed
 
       // If the input is not a letter, treating it as regex can cause issues
       if (!/[a-zA-Z]/.test(searchString)) {
-        return vimState.easyMotion.sortedSearch(position, searchString, options);
+        return vimState.easyMotion.sortedSearch(vimState, position, searchString, options);
       }
 
       const ignorecase =
         configuration.ignorecase && !(configuration.smartcase && /[A-Z]/.test(searchString));
       const regexFlags = ignorecase ? 'gi' : 'g';
       return vimState.easyMotion.sortedSearch(
+        vimState,
         position,
         new RegExp(searchString, regexFlags),
         options
@@ -137,6 +143,8 @@ function getMatchesForString(
 }
 
 export interface EasyMotionSearchAction {
+  searchString: string;
+
   /**
    * True if it should go to Easymotion mode
    */
@@ -146,14 +154,12 @@ export interface EasyMotionSearchAction {
    * Command to execute when it should fire
    */
   fire(position: Position, vimState: VimState): Promise<void>;
-  updateSearchString(s: string): void;
-  getSearchString(): string;
   getMatches(position: Position, vimState: VimState): EasyMotion.Match[];
   readonly searchCharCount: number;
 }
 
 export class SearchByCharCommand extends BaseEasyMotionCommand implements EasyMotionSearchAction {
-  private _searchString: string = '';
+  public searchString: string = '';
   private _options: EasyMotionCharMoveOpions;
 
   get searchCharCount() {
@@ -166,25 +172,12 @@ export class SearchByCharCommand extends BaseEasyMotionCommand implements EasyMo
   }
 
   public getMatches(position: Position, vimState: VimState): EasyMotion.Match[] {
-    return getMatchesForString(
-      position,
-      vimState,
-      this._searchString,
-      this.searchOptions(position)
-    );
-  }
-
-  public updateSearchString(s: string) {
-    this._searchString = s;
-  }
-
-  public getSearchString() {
-    return this._searchString;
+    return getMatchesForString(position, vimState, this.searchString, this.searchOptions(position));
   }
 
   public shouldFire() {
     const charCount = this._options.charCount;
-    return charCount ? this._searchString.length >= charCount : true;
+    return charCount ? this.searchString.length >= charCount : true;
   }
 
   public async fire(position: Position, vimState: VimState): Promise<void> {
@@ -205,7 +198,7 @@ export class SearchByCharCommand extends BaseEasyMotionCommand implements EasyMo
 }
 
 export class SearchByNCharCommand extends BaseEasyMotionCommand implements EasyMotionSearchAction {
-  private _searchString: string = '';
+  public searchString: string = '';
 
   get searchCharCount() {
     return -1;
@@ -219,19 +212,11 @@ export class SearchByNCharCommand extends BaseEasyMotionCommand implements EasyM
     return match.position;
   }
 
-  public updateSearchString(s: string) {
-    this._searchString = s;
-  }
-
-  public getSearchString() {
-    return this._searchString;
-  }
-
   public getMatches(position: Position, vimState: VimState): EasyMotion.Match[] {
     return getMatchesForString(
       position,
       vimState,
-      this.removeTrailingLineBreak(this._searchString),
+      this.removeTrailingLineBreak(this.searchString),
       {}
     );
   }
@@ -242,11 +227,11 @@ export class SearchByNCharCommand extends BaseEasyMotionCommand implements EasyM
 
   public shouldFire() {
     // Fire when <CR> typed
-    return this._searchString.endsWith('\n');
+    return this.searchString.endsWith('\n');
   }
 
   public async fire(position: Position, vimState: VimState): Promise<void> {
-    if (this.removeTrailingLineBreak(this._searchString) !== '') {
+    if (this.removeTrailingLineBreak(this.searchString) !== '') {
       await this.exec(position, vimState);
     }
   }
@@ -305,7 +290,7 @@ export class EasyMotionWordMoveCommandBase extends BaseEasyMotionCommand {
     const regex = this._options.jumpToAnywhere
       ? new RegExp(configuration.easymotionJumpToAnywhereRegex, 'g')
       : new RegExp('\\w{1,}', 'g');
-    return vimState.easyMotion.sortedSearch(position, regex, options);
+    return vimState.easyMotion.sortedSearch(vimState, position, regex, options);
   }
 }
 
@@ -331,7 +316,12 @@ export class EasyMotionLineMoveCommandBase extends BaseEasyMotionCommand {
     options?: EasyMotion.SearchOptions
   ): EasyMotion.Match[] {
     // Search for the beginning of all non whitespace chars on each line before the cursor
-    const matches = vimState.easyMotion.sortedSearch(position, new RegExp('^.', 'gm'), options);
+    const matches = vimState.easyMotion.sortedSearch(
+      vimState,
+      position,
+      new RegExp('^.', 'gm'),
+      options
+    );
     for (const match of matches) {
       match.position = TextEditor.getFirstNonWhitespaceCharOnLine(match.position.line);
     }
@@ -347,10 +337,10 @@ class EasyMotionCharInputMode extends BaseCommand {
   public async exec(position: Position, vimState: VimState): Promise<void> {
     const key = this.keysPressed[0];
     const action = vimState.easyMotion.searchAction;
-    const oldSearchString = action.getSearchString();
-    const newSearchString =
-      key === '<BS>' || key === '<shift+BS>' ? oldSearchString.slice(0, -1) : oldSearchString + key;
-    action.updateSearchString(newSearchString);
+    action.searchString =
+      key === '<BS>' || key === '<S-bs>'
+        ? action.searchString.slice(0, -1)
+        : action.searchString + key;
     if (action.shouldFire()) {
       // Skip Easymotion input mode to make sure not to back to it
       await vimState.setCurrentMode(vimState.easyMotion.previousMode);
@@ -373,6 +363,7 @@ class CommandEscEasyMotionCharInputMode extends BaseCommand {
 class MoveEasyMotion extends BaseCommand {
   modes = [Mode.EasyMotionMode];
   keys = ['<character>'];
+  isJump = true;
 
   public async exec(position: Position, vimState: VimState): Promise<void> {
     const key = this.keysPressed[0];
@@ -394,7 +385,7 @@ class MoveEasyMotion extends BaseCommand {
         // Only one found, navigate to it
         const marker = markers[0];
 
-        vimState.easyMotion.clearDecorations();
+        vimState.easyMotion.clearDecorations(vimState.editor);
         // Restore the mode from before easy motion
         await vimState.setCurrentMode(vimState.easyMotion.previousMode);
 
@@ -402,7 +393,7 @@ class MoveEasyMotion extends BaseCommand {
         vimState.cursorStopPosition = marker.position;
       } else if (markers.length === 0) {
         // None found, exit mode
-        vimState.easyMotion.clearDecorations();
+        vimState.easyMotion.clearDecorations(vimState.editor);
         await vimState.setCurrentMode(vimState.easyMotion.previousMode);
       }
     }

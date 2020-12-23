@@ -12,13 +12,13 @@
 import DiffMatchPatch = require('diff-match-patch');
 import * as vscode from 'vscode';
 
-import { Position } from './../common/motion/position';
 import { RecordedState } from './../state/recordedState';
 import { Logger } from './../util/logger';
 import { VimState } from './../state/vimState';
 import { TextEditor } from './../textEditor';
 import { StatusBar } from '../statusBar';
 import { Mode } from '../mode/mode';
+import { Position } from 'vscode';
 
 const diffEngine = new DiffMatchPatch.diff_match_patch();
 diffEngine.Diff_Timeout = 1; // 1 second
@@ -33,37 +33,40 @@ class DocumentChange {
   // TODO: support replacement, which would cut the number of changes for :s/foo/bar in half
   public isAdd: boolean;
 
-  private _end: Position;
+  private _end: Position | undefined;
   private _text: string;
 
   constructor(start: Position, text: string, isAdd: boolean) {
     this.start = start;
-    this.text = text;
+    this._text = text;
     this.isAdd = isAdd;
   }
 
   /**
    * Run this change.
    */
-  public async do(undo = false): Promise<void> {
+  public async do(editor: vscode.TextEditor, undo = false): Promise<void> {
     if ((this.isAdd && !undo) || (!this.isAdd && undo)) {
-      await TextEditor.insert(this.text, this.start, false);
+      await TextEditor.insert(editor, this.text, this.start, false);
     } else {
-      await TextEditor.delete(new vscode.Range(this.start, this.end));
+      await TextEditor.delete(editor, new vscode.Range(this.start, this.end));
     }
   }
 
   /**
    * Run this change in reverse.
    */
-  public async undo(): Promise<void> {
-    return this.do(true);
+  public async undo(editor: vscode.TextEditor): Promise<void> {
+    return this.do(editor, true);
   }
 
   /**
    * The position after advancing start by text
    */
   public get end(): Position {
+    if (this._end === undefined) {
+      this._end = this.start.advancePositionByText(this._text);
+    }
     return this._end;
   }
 
@@ -73,7 +76,7 @@ class DocumentChange {
 
   public set text(text: string) {
     this._text = text;
-    this._end = this.start.advancePositionByText(this.text);
+    this._end = undefined;
   }
 }
 
@@ -263,9 +266,10 @@ export class HistoryTracker {
    * We add an initial, unrevertable step, which inserts the entire document.
    */
   private _initialize() {
+    const documentText = this._getDocumentText();
     this.historySteps.push(
       new HistoryStep({
-        changes: [new DocumentChange(new Position(0, 0), this._getDocumentText(), true)],
+        changes: [new DocumentChange(new Position(0, 0), documentText, true)],
         isFinished: true,
         cursorStart: [new Position(0, 0)],
         cursorEnd: [new Position(0, 0)],
@@ -275,7 +279,7 @@ export class HistoryTracker {
     this.finishCurrentStep();
 
     this.previousDocumentState = {
-      text: this._getDocumentText(),
+      text: documentText,
       versionNumber: this._getDocumentVersion(),
     };
     this.currentContentChanges = [];
@@ -360,13 +364,13 @@ export class HistoryTracker {
             if (pos.isBefore(newMark.position)) {
               if (ch === '\n') {
                 newMark.position = new Position(
-                  newMark.position.line - 1,
+                  Math.max(newMark.position.line - 1, 0),
                   newMark.position.character
                 );
               } else if (pos.line === newMark.position.line) {
                 newMark.position = new Position(
                   newMark.position.line,
-                  newMark.position.character - 1
+                  Math.max(newMark.position.character - 1, 0)
                 );
               }
             }
@@ -389,9 +393,10 @@ export class HistoryTracker {
 
     // Ensure the position of every mark is within the range of the document.
 
+    const docEnd = TextEditor.getDocumentEnd();
     for (const mark of newMarks) {
-      if (mark.position.isAfter(TextEditor.getDocumentEnd())) {
-        mark.position = TextEditor.getDocumentEnd();
+      if (mark.position.isAfter(docEnd)) {
+        mark.position = docEnd;
       }
     }
 
@@ -689,7 +694,7 @@ export class HistoryTracker {
     const step = this.currentHistoryStep;
 
     for (const change of step.changes.slice(0).reverse()) {
-      await change.undo();
+      await change.undo(this.vimState.editor);
     }
 
     // TODO: if there are more/fewer lines after undoing the change, it should say so
@@ -784,7 +789,7 @@ export class HistoryTracker {
 
     // Note that reverse() is call-by-reference, so the changes are already in reverse order
     for (const change of changesToUndo) {
-      await change.undo();
+      await change.undo(this.vimState.editor);
       change.isAdd = !change.isAdd;
     }
 
@@ -827,7 +832,7 @@ export class HistoryTracker {
 
     // TODO: do these transformations in a bacth
     for (const change of step.changes) {
-      await change.do();
+      await change.do(this.vimState.editor);
     }
 
     const changes = step.changes.length === 1 ? `1 change` : `${step.changes.length} changes`;

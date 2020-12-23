@@ -4,8 +4,7 @@ import { getAndUpdateModeHandler } from '../../extension';
 import { Globals } from '../../src/globals';
 import { Mode } from '../../src/mode/mode';
 import { ModeHandler } from '../../src/mode/modeHandler';
-import { TextEditor } from '../../src/textEditor';
-import { getTestingFunctions } from '../testSimplifier';
+import { newTest, newTestSkip } from '../testSimplifier';
 import {
   assertEqualLines,
   cleanUpWorkspace,
@@ -16,11 +15,9 @@ import {
 suite('Mode Visual', () => {
   let modeHandler: ModeHandler;
 
-  const { newTest, newTestOnly, newTestSkip } = getTestingFunctions();
-
   setup(async () => {
     await setupWorkspace();
-    modeHandler = await getAndUpdateModeHandler();
+    modeHandler = (await getAndUpdateModeHandler())!;
   });
 
   teardown(cleanUpWorkspace);
@@ -37,8 +34,7 @@ suite('Mode Visual', () => {
     await modeHandler.handleMultipleKeyEvents('itest test test\ntest\n'.split(''));
     await modeHandler.handleMultipleKeyEvents(['<Esc>', 'g', 'g', 'v', 'w']);
 
-    const sel = TextEditor.getSelection();
-
+    const sel = modeHandler.vimState.editor.selection;
     assert.strictEqual(sel.start.character, 0);
     assert.strictEqual(sel.start.line, 0);
 
@@ -550,6 +546,66 @@ suite('Mode Visual', () => {
     });
   });
 
+  suite('handles bracket blocks in visual mode', () => {
+    const brackets = [
+      {
+        start: '{',
+        end: '}',
+      },
+      {
+        start: '[',
+        end: ']',
+      },
+      {
+        start: '(',
+        end: ')',
+      },
+      {
+        start: '<',
+        end: '>',
+      },
+    ];
+
+    // each test case gets run with start bracket and end bracket
+    const bracketsToTest = brackets.flatMap(({ start, end }) => [
+      { start, end, buttonToPress: start },
+      { start, end, buttonToPress: end },
+    ]);
+    bracketsToTest.forEach(({ start, end, buttonToPress }) => {
+      newTest({
+        title: `Can do di${buttonToPress} on a matching bracket`,
+        start: [`${start} one ${start} two ${start} th|ree ${end} four ${end} five ${end}`],
+        keysPressed: `di${buttonToPress}`,
+        end: [`${start} one ${start} two ${start}|${end} four ${end} five ${end}`],
+        endMode: Mode.Normal,
+      });
+
+      newTest({
+        title: `Can do i${buttonToPress} on multiple matching brackets`,
+        start: [`${start} one ${start} two ${start} th|ree ${end} four ${end} five ${end}`],
+        keysPressed: `vi${buttonToPress}i${buttonToPress}i${buttonToPress}d`,
+        end: [`${start}|${end}`],
+        endMode: Mode.Normal,
+      });
+
+      newTest({
+        title: `Can do d3i${buttonToPress} on matching brackets`,
+        start: [`${start} one ${start} two ${start} th|ree ${end} four ${end} five ${end}`],
+        keysPressed: `d3i${buttonToPress}`,
+        end: [`${start}|${end}`],
+        endMode: Mode.Normal,
+      });
+
+      newTest({
+        title: `Can do d3i${buttonToPress} on matching brackets for multiple lines`,
+        start: [start, 'one', start, 'two', start, 'th|ree', end, 'four', end, 'five', end],
+        keysPressed: `d3i${buttonToPress}`,
+        end: [start, `|${end}`],
+        endMode: Mode.Normal,
+      });
+    });
+  });
+
   suite('handles tag blocks in visual mode', () => {
     newTest({
       title: 'Can do vit on a matching tag',
@@ -928,8 +984,7 @@ suite('Mode Visual', () => {
       await modeHandler.handleMultipleKeyEvents('ifoo bar fun baz'.split(''));
       await modeHandler.handleMultipleKeyEvents(['<Esc>', 'g', 'g', 'v', 'w', '/']);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       // ensuring selection range starts from the beginning
       assert.strictEqual(selection.start.character, 0);
       assert.strictEqual(selection.start.line, 0);
@@ -1173,8 +1228,7 @@ suite('Mode Visual', () => {
       assert.strictEqual(modeHandler.currentMode, Mode.Visual);
       assertEqualLines(['with me', 'with me', 'or with me longer than the target']);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       // ensuring selecting 'with me' at the first line
       assert.strictEqual(selection.start.character, 0);
       assert.strictEqual(selection.start.line, 0);
@@ -1202,8 +1256,7 @@ suite('Mode Visual', () => {
         'or with me longer than the target',
       ]);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       // ensuring selecting 'or with me longer than the target' at the first line
       assert.strictEqual(selection.start.character, 0);
       assert.strictEqual(selection.start.line, 0);
@@ -1225,8 +1278,7 @@ suite('Mode Visual', () => {
       assert.strictEqual(modeHandler.currentMode, Mode.Visual);
       assertEqualLines(['foo', 'bar this', 'foo', 'bar']);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       // ensuring selecting 'foo\nbar'
       assert.strictEqual(selection.start.character, 0);
       assert.strictEqual(selection.start.line, 0);
@@ -1244,8 +1296,7 @@ suite('Mode Visual', () => {
 
       assert.strictEqual(modeHandler.currentMode, Mode.Visual);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       assert.strictEqual(selection.start.character, 0);
       assert.strictEqual(selection.start.line, 0);
       assert.strictEqual(selection.end.character, 'hello'.length);
@@ -1260,8 +1311,7 @@ suite('Mode Visual', () => {
 
       assert.strictEqual(modeHandler.currentMode, Mode.Visual);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       assert.strictEqual(selection.start.character, 0);
       assert.strictEqual(selection.start.line, 1);
       assert.strictEqual(selection.end.character, 5);
@@ -1276,8 +1326,7 @@ suite('Mode Visual', () => {
 
       assert.strictEqual(modeHandler.currentMode, Mode.Visual);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       assert.strictEqual(selection.start.character, 1);
       assert.strictEqual(selection.start.line, 1);
       assert.strictEqual(selection.end.character, 5);
@@ -1292,8 +1341,7 @@ suite('Mode Visual', () => {
 
       assert.strictEqual(modeHandler.currentMode, Mode.Visual);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       assert.strictEqual(selection.start.character, 3);
       assert.strictEqual(selection.start.line, 1);
       assert.strictEqual(selection.end.character, 5);
@@ -1308,8 +1356,7 @@ suite('Mode Visual', () => {
 
       assert.strictEqual(modeHandler.currentMode, Mode.Visual);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       assert.strictEqual(selection.start.character, 4);
       assert.strictEqual(selection.start.line, 1);
       assert.strictEqual(selection.end.character, 5);
@@ -1324,8 +1371,7 @@ suite('Mode Visual', () => {
 
       assert.strictEqual(modeHandler.currentMode, Mode.Visual);
 
-      const selection = TextEditor.getSelection();
-
+      const selection = modeHandler.vimState.editor.selection;
       assert.strictEqual(selection.start.character, 5);
       assert.strictEqual(selection.start.line, 1);
       assert.strictEqual(selection.end.character, 5);
