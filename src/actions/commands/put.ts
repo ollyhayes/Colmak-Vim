@@ -143,16 +143,16 @@ export class PutCommand extends BaseCommand {
     } else {
       if (options.adjustIndent) {
         // Adjust indent to current line
-        let indentationWidth = TextEditor.getIndentationLevel(
+        const indentationWidth = TextEditor.getIndentationLevel(
           vimState.document.lineAt(position).text
         );
-        let firstLineIdentationWidth = TextEditor.getIndentationLevel(text.split('\n')[0]);
+        const firstLineIdentationWidth = TextEditor.getIndentationLevel(text.split('\n')[0]);
 
         text = text
           .split('\n')
           .map((line) => {
-            let currentIdentationWidth = TextEditor.getIndentationLevel(line);
-            let newIndentationWidth =
+            const currentIdentationWidth = TextEditor.getIndentationLevel(line);
+            const newIndentationWidth =
               currentIdentationWidth - firstLineIdentationWidth + indentationWidth;
 
             return TextEditor.setIndentationLevel(line, newIndentationWidth);
@@ -211,7 +211,7 @@ export class PutCommand extends BaseCommand {
       };
     } else if (registerMode === RegisterMode.LineWise && options.forceCursorLastLine) {
       // Move to cursor to last line, first non-whitespace character of what you pasted
-      let lastLine = text.split('\n')[numNewlines];
+      const lastLine = text.split('\n')[numNewlines];
       const check = lastLine.match(/^\s*/);
       const numWhitespace = check ? check[0].length : 0;
 
@@ -280,7 +280,7 @@ export class PutCommand extends BaseCommand {
       type: 'insertText',
       text: textToAdd,
       position: whereToAddText,
-      diff: diff,
+      diff,
     });
     let numNewlinesAfterPut = textToAdd.split('\n').length;
     if (registerMode === RegisterMode.LineWise) {
@@ -376,14 +376,38 @@ class PutBeforeCommand extends BaseCommand {
 @RegisterAction
 class PutCommandVisual extends BaseCommand {
   keys = [['p'], ['P']];
-  modes = [Mode.Visual];
-  runsOnceForEachCountPrefix = true;
+  modes = [Mode.Visual, Mode.VisualLine];
 
   public async exec(position: Position, vimState: VimState): Promise<void> {
-    const register = await Register.get(vimState);
+    const registerName = vimState.recordedState.registerName;
+    const register = await Register.get(vimState, registerName);
     if (register === undefined) {
       StatusBar.displayError(vimState, VimError.fromCode(ErrorCode.NothingInRegister));
       return;
+    }
+
+    // TODO: this should be handled by PutCommand, but that will require a larger refactor
+    const hasCount = vimState.recordedState.count > 1;
+    let oldText: RegisterContent = '';
+    if (hasCount) {
+      oldText = register.text;
+
+      const repeatedText = Array(vimState.recordedState.count)
+        .fill(oldText)
+        .join(
+          register.registerMode === RegisterMode.LineWise ||
+            vimState.currentMode === Mode.VisualLine
+            ? '\n'
+            : ''
+        );
+
+      // Repeat register content requested number of times and save this into the register
+      Register.putByKey(repeatedText, registerName, register.registerMode, true);
+      // TODO: are both these lines needed?
+      register.text = repeatedText;
+
+      // Only put the register content once as it's repeated in the register
+      vimState.recordedState.count = 1;
     }
 
     let [start, end] = sorted(vimState.cursorStartPosition, vimState.cursorStopPosition);
@@ -391,86 +415,64 @@ class PutCommandVisual extends BaseCommand {
       [start, end] = [start.getLineBegin(), end.getLineEnd()];
     }
 
-    // If the to-be-inserted text is linewise, we have separate logic:
-    // first delete the selection, then insert
     const oldMode = vimState.currentMode;
     if (register.registerMode === RegisterMode.LineWise) {
-      const replaceRegisterName = vimState.recordedState.registerName;
-      const replaceRegister = (await Register.get(vimState, replaceRegisterName))!;
+      // If the to-be-inserted text is linewise, we have separate logic:
+      // first delete the selection, then insert
       vimState.recordedState.registerName = configuration.useSystemClipboard ? '*' : '"';
-      await new operator.DeleteOperator(this.multicursorIndex).run(vimState, start, end, true);
+
+      // visual paste breaks for multicursor as of november 2020 because of the yank part
+      // so we disable it for now, see: https://github.com/VSCodeVim/Vim/issues/5493#issuecomment-731147687
+      const yank = !vimState.isMultiCursor;
+      await new operator.DeleteOperator(this.multicursorIndex).run(vimState, start, end, yank);
+
       const deletedRegisterName = vimState.recordedState.registerName;
       const deletedRegister = (await Register.get(vimState, deletedRegisterName))!;
-      if (replaceRegisterName === deletedRegisterName) {
-        Register.putByKey(replaceRegister.text, replaceRegisterName, replaceRegister.registerMode);
+      if (registerName === deletedRegisterName) {
+        Register.putByKey(register.text, registerName, register.registerMode);
       }
+
       // To ensure that the put command knows this is
       // a linewise register insertion in visual mode of
       // characterwise, linewise
-      let resultMode = vimState.currentMode;
+      const resultMode = vimState.currentMode;
       await vimState.setCurrentMode(oldMode);
-      vimState.recordedState.registerName = replaceRegisterName;
+      vimState.recordedState.registerName = registerName;
       await new PutCommand(this.multicursorIndex).exec(start, vimState, {
         pasteBeforeCursor: true,
       });
       await vimState.setCurrentMode(resultMode);
-      if (replaceRegisterName === deletedRegisterName) {
+
+      if (registerName === deletedRegisterName) {
         Register.putByKey(deletedRegister.text, deletedRegisterName, deletedRegister.registerMode);
       }
-      return;
-    }
+    } else {
+      await new PutCommand(this.multicursorIndex).exec(start, vimState, {
+        pasteBeforeCursor: true,
+      });
 
-    // The reason we need to handle Delete and Yank separately is because of
-    // linewise mode. If we're in visualLine mode, then we want to copy
-    // linewise but not necessarily delete linewise.
-    await new PutCommand(this.multicursorIndex).exec(start, vimState, {
-      pasteBeforeCursor: true,
-    });
-    vimState.currentRegisterMode =
-      oldMode === Mode.VisualLine ? RegisterMode.LineWise : RegisterMode.CharacterWise;
-    vimState.recordedState.registerName = configuration.useSystemClipboard ? '*' : '"';
-    await new operator.YankOperator(this.multicursorIndex).run(vimState, start, end);
-    vimState.currentRegisterMode = RegisterMode.CharacterWise;
-    await new operator.DeleteOperator(this.multicursorIndex).run(
-      vimState,
-      start,
-      end.getLeftIfEOL(),
-      false
-    );
-    vimState.currentRegisterMode = RegisterMode.AscertainFromCurrentMode;
-  }
-}
+      // Yank (line-wise iff we're in VisualLine mode) into the default register
+      vimState.currentRegisterMode =
+        oldMode === Mode.VisualLine ? RegisterMode.LineWise : RegisterMode.CharacterWise;
+      vimState.recordedState.registerName = configuration.useSystemClipboard ? '*' : '"';
+      if (!vimState.isMultiCursor) {
+        await new operator.YankOperator(this.multicursorIndex).run(vimState, start, end);
+      }
 
-@RegisterAction
-class PutCommandVisualLine extends BaseCommand {
-  keys = [['p'], ['P']];
-  modes = [Mode.VisualLine];
-  runsOnceForEachCountPrefix = false;
-
-  public async exec(position: Position, vimState: VimState): Promise<void> {
-    const isMultiLinePaste = vimState.recordedState.count > 1;
-    const replaceRegisterName = vimState.recordedState.registerName;
-    let oldText: RegisterContent = '';
-
-    if (isMultiLinePaste) {
-      oldText = (await Register.get(vimState, replaceRegisterName))!.text;
-      // Repeat register content requested number of times and save this into the register
-      Register.putByKey(
-        Array(vimState.recordedState.count).fill(oldText).join('\n'),
-        replaceRegisterName,
-        RegisterMode.LineWise,
-        true
+      // Delete, always character-wise
+      vimState.currentRegisterMode = RegisterMode.CharacterWise;
+      await new operator.DeleteOperator(this.multicursorIndex).run(
+        vimState,
+        start,
+        end.getLeftIfEOL(),
+        false
       );
-      // Only put the register content once as it's repeated in the register
-      vimState.recordedState.count = 1;
+
+      vimState.currentRegisterMode = RegisterMode.AscertainFromCurrentMode;
     }
 
-    // Call regular visual put command implementation
-    await new PutCommandVisual().exec(position, vimState);
-
-    // Restore register content
-    if (isMultiLinePaste) {
-      Register.putByKey(oldText, replaceRegisterName, RegisterMode.LineWise, true);
+    if (hasCount) {
+      Register.putByKey(oldText, registerName, register.registerMode, true);
     }
   }
 }
@@ -478,7 +480,7 @@ class PutCommandVisualLine extends BaseCommand {
 @RegisterAction
 class GPutCommand extends BaseCommand {
   keys = ['g', 'p'];
-  modes = [Mode.Normal, Mode.Visual];
+  modes = [Mode.Normal];
   runsOnceForEachCountPrefix = true;
   canBeRepeatedWithDot = true;
 
@@ -523,17 +525,19 @@ class GPutCommand extends BaseCommand {
 }
 
 @RegisterAction
-class GPutCommandVisualLine extends PutCommandVisualLine {
+class GPutCommandVisual extends PutCommandVisual {
   keys = [
     ['g', 'p'],
     ['g', 'P'],
   ];
+  modes = [Mode.Visual, Mode.VisualLine];
 
   public async exec(position: Position, vimState: VimState): Promise<void> {
-    let repeats = vimState.recordedState.count === 0 ? 1 : vimState.recordedState.count;
+    const visualLine = vimState.currentMode === Mode.VisualLine;
+    const repeats = vimState.recordedState.count === 0 ? 1 : vimState.recordedState.count;
     await super.exec(position, vimState);
     // Vgp should place the cursor on the next line
-    if (vimState.effectiveRegisterMode === RegisterMode.LineWise) {
+    if (visualLine || vimState.effectiveRegisterMode === RegisterMode.LineWise) {
       vimState.recordedState.transformer.addTransformation({
         type: 'moveCursor',
         diff: new PositionDiff({ line: repeats, character: 0 }),
@@ -613,6 +617,7 @@ class PutBeforeWithIndentCommand extends BaseCommand {
 
     if (vimState.effectiveRegisterMode === RegisterMode.LineWise) {
       vimState.cursorStopPosition = TextEditor.getFirstNonWhitespaceCharOnLine(
+        vimState.document,
         vimState.cursorStopPosition.getUp().line
       );
     }

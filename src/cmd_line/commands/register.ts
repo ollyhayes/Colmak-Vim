@@ -11,15 +11,11 @@ export interface IRegisterCommandArguments extends node.ICommandArgs {
   registers: string[];
 }
 export class RegisterCommand extends node.CommandBase {
-  protected _arguments: IRegisterCommandArguments;
+  private readonly arguments: IRegisterCommandArguments;
 
   constructor(args: IRegisterCommandArguments) {
     super();
-    this._arguments = args;
-  }
-
-  get arguments(): IRegisterCommandArguments {
-    return this._arguments;
+    this.arguments = args;
   }
 
   private async getRegisterDisplayValue(
@@ -74,7 +70,7 @@ export class RegisterCommand extends node.CommandBase {
         .sort((reg1: string, reg2: string) => this.regSortOrder(reg1) - this.regSortOrder(reg2));
       const registerKeyAndContent = new Array<vscode.QuickPickItem>();
 
-      for (let registerKey of currentRegisterKeys) {
+      for (const registerKey of currentRegisterKeys) {
         registerKeyAndContent.push({
           label: registerKey,
           description: await this.getRegisterDisplayValue(vimState, registerKey),
@@ -83,7 +79,7 @@ export class RegisterCommand extends node.CommandBase {
 
       vscode.window.showQuickPick(registerKeyAndContent).then(async (val) => {
         if (val) {
-          let result = val.description;
+          const result = val.description;
           vscode.window.showInformationMessage(`${val.label} ${result}`);
         }
       });
