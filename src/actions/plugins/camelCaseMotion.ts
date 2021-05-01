@@ -84,7 +84,7 @@ class MoveBeginningCamelCaseWord extends CamelCaseBaseMovement {
 @RegisterAction
 class SelectInnerCamelCaseWord extends CamelCaseTextObjectMovement {
   modes = [Mode.Normal, Mode.Visual];
-  keys = ['i', '<leader>', 'w'];
+  keys = ['l', '<leader>', 'w'];
 
   public async execAction(position: Position, vimState: VimState): Promise<IMovement> {
     let start: Position;

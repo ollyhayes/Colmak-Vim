@@ -165,7 +165,7 @@ class TestObjectHelper {
   }
 
   public asVimInputText(): string[] {
-    const ret = 'i' + this.testObject.start.join('\n').replace('|', '');
+    const ret = 'l' + this.testObject.start.join('\n').replace('|', '');
     return ret.split('');
   }
 
@@ -300,7 +300,7 @@ class TestWithRemapsObjectHelper {
   }
 
   public asVimInputText(): string[] {
-    const ret = 'i' + this.testObject.start.join('\n').replace('|', '');
+    const ret = 'l' + this.testObject.start.join('\n').replace('|', '');
     return ret.split('');
   }
 
