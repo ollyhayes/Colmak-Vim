@@ -16,7 +16,7 @@ export const shouldWrapKey = (mode: Mode, key: string): boolean => {
     k = 'b';
   } else if (key === ' ') {
     k = 's';
-  } else if (['h', 'l', '~'].includes(key)) {
+  } else if (['h', 'i', '~'].includes(key)) {
     k = key;
   } else {
     throw new Error(`shouldWrapKey called with unexpected key='${key}'`);
