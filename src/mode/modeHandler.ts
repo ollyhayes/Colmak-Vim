@@ -2,7 +2,11 @@ import * as vscode from 'vscode';
 
 import { BaseAction, KeypressState, BaseCommand, getRelevantAction } from './../actions/base';
 import { BaseMovement } from '../actions/baseMotion';
-import { CommandInsertInInsertMode, CommandInsertPreviousText } from './../actions/commands/insert';
+import {
+  CommandEscInsertMode,
+  CommandInsertInInsertMode,
+  CommandInsertPreviousText,
+} from './../actions/commands/insert';
 import { Jump } from '../jumps/jump';
 import { Logger } from '../util/logger';
 import { Mode, VSCodeVimCursorType, isVisualMode, getCursorStyle, isStatusBarMode } from './mode';
@@ -28,7 +32,7 @@ import {
   CommandNumber,
 } from './../actions/commands/actions';
 import { isTextTransformation } from '../transformations/transformations';
-import { executeTransformations } from '../transformations/execute';
+import { executeTransformations, IModeHandler } from '../transformations/execute';
 import { globalState } from '../state/globalState';
 import { Notation } from '../configuration/notation';
 import { EditorIdentity } from '../editorIdentity';
@@ -50,7 +54,7 @@ interface IModeHandlerMap {
  *
  * See:  https://github.com/VSCodeVim/Vim/blob/master/.github/CONTRIBUTING.md#the-vim-state-machine
  */
-export class ModeHandler implements vscode.Disposable {
+export class ModeHandler implements vscode.Disposable, IModeHandler {
   public readonly vimState: VimState;
   public readonly remapState: RemapState;
 
@@ -97,21 +101,19 @@ export class ModeHandler implements vscode.Disposable {
    */
   public syncCursors() {
     // TODO: getCursorsAfterSync() is basically this, but stupider
-    global.setImmediate(() => {
-      if (this.vimState.editor) {
-        const { selections } = this.vimState.editor;
-        if (
-          !this.vimState.cursorStartPosition.isEqual(selections[0].anchor) ||
-          !this.vimState.cursorStopPosition.isEqual(selections[0].active)
-        ) {
-          this.vimState.desiredColumn = selections[0].active.character;
-        }
-
-        this.vimState.cursors = selections.map(({ active, anchor }) =>
-          active.isBefore(anchor) ? new Range(anchor.getLeft(), active) : new Range(anchor, active)
-        );
+    if (this.vimState.editor) {
+      const { selections } = this.vimState.editor;
+      if (
+        !this.vimState.cursorStartPosition.isEqual(selections[0].anchor) ||
+        !this.vimState.cursorStopPosition.isEqual(selections[0].active)
+      ) {
+        this.vimState.desiredColumn = selections[0].active.character;
       }
-    }, 0);
+
+      this.vimState.cursors = selections.map(({ active, anchor }) =>
+        active.isBefore(anchor) ? new Range(anchor.getLeft(), active) : new Range(anchor, active)
+      );
+    }
   }
 
   /**
@@ -608,7 +610,10 @@ export class ModeHandler implements vscode.Disposable {
       const lastAction = recordedState.actionsRun[recordedState.actionsRun.length - 1];
 
       if (lastAction instanceof DocumentContentChangeAction) {
-        lastAction.keysPressed.push(key);
+        if (!(action instanceof CommandEscInsertMode)) {
+          // TODO: this includes things like <BS>, which it shouldn't
+          lastAction.keysPressed.push(key);
+        }
 
         if (
           action instanceof CommandInsertInInsertMode ||
@@ -730,10 +735,6 @@ export class ModeHandler implements vscode.Disposable {
       }
     }
 
-    if (action instanceof DocumentContentChangeAction) {
-      await action.exec(this.vimState.cursorStopPosition, this.vimState);
-    }
-
     if (action instanceof BaseOperator) {
       recordedState.operatorCount = recordedState.count;
     }
@@ -786,7 +787,7 @@ export class ModeHandler implements vscode.Disposable {
       globalState.previousFullAction = this.vimState.recordedState;
 
       if (recordedState.isInsertion) {
-        Register.putByKey(recordedState, '.', undefined, true);
+        Register.setReadonlyRegister('.', recordedState);
       }
     }
 
@@ -861,7 +862,9 @@ export class ModeHandler implements vscode.Disposable {
     this.vimState.currentRegisterMode = RegisterMode.AscertainFromCurrentMode;
 
     if (this.currentMode === Mode.Normal) {
-      this.vimState.cursorStartPosition = this.vimState.cursorStopPosition;
+      this.vimState.cursors = this.vimState.cursors.map(
+        (cursor) => new Range(cursor.stop, cursor.stop)
+      );
     }
 
     // Ensure cursors are within bounds
@@ -904,11 +907,6 @@ export class ModeHandler implements vscode.Disposable {
         return cursor;
       });
     }
-
-    // Update the current history step to have the latest cursor position
-    this.vimState.historyTracker.setLastHistoryEndPosition(
-      this.vimState.cursors.map((c) => c.stop)
-    );
 
     if (isVisualMode(this.vimState.currentMode) && !this.vimState.isRunningDotCommand) {
       // Store selection for commands like gv
@@ -1595,11 +1593,10 @@ export class ModeHandler implements vscode.Disposable {
 
     StatusBar.clear(this.vimState, false);
 
-    await VSCodeContext.set('vim.mode', Mode[this.vimState.currentMode]);
+    // NOTE: this is not being awaited to save the 15-20ms block - I think this is fine
+    VSCodeContext.set('vim.mode', Mode[this.vimState.currentMode]);
 
-    // Tell VSCode that the cursor position changed, so it updates its highlights for
-    // `editor.occurrencesHighlight`.
-
+    // Tell VSCode that the cursor position changed, so it updates its highlights for `editor.occurrencesHighlight`.
     const range = new vscode.Range(
       this.vimState.cursorStartPosition,
       this.vimState.cursorStopPosition

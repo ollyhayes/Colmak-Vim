@@ -1445,11 +1445,29 @@ suite('Mode Normal', () => {
     end: ['one|two'],
   });
 
-  newTest({
-    title: 'g; works correctly',
-    start: ['|'],
-    keysPressed: 'ione<Esc>atwo<Esc>g;g;',
-    end: ['one|two'],
+  suite('g;', () => {
+    newTest({
+      title: 'g; works correctly after insert',
+      start: ['one', 'tw|o', 'three'],
+      keysPressed: 'iXYZ<Esc>Gg;',
+      end: ['one', 'twXY|Zo', 'three'],
+    });
+
+    newTest({
+      title: 'g; works correctly after delete',
+      start: ['one', 'two', 'th|ree'],
+      keysPressed: 'xggg;',
+      end: ['one', 'two', 'th|ee'],
+    });
+
+    newTest({
+      title: 'g; works correctly after change',
+      start: ['one', 'two', 'th|ree'],
+      keysPressed: 'clXYZ<Esc>ggg;',
+      end: ['one', 'two', 'thXY|Zee'],
+    });
+
+    // TODO: Test with multiple changes
   });
 
   newTest({
@@ -1480,8 +1498,8 @@ suite('Mode Normal', () => {
     ],
     keysPressed: 'Vgq',
     end: [
-      '//    We choose to write a vim extension, not because it is easy, but because it is',
-      '|//    hard.',
+      '//    We choose to write a vim extension, not because it is easy, but because it',
+      '|//    is hard.',
     ],
   });
 
@@ -1518,8 +1536,8 @@ suite('Mode Normal', () => {
     keysPressed: 'gqj',
     end: [
       '|// We choose to write a vim extension, not because it is easy, but because it is',
-      '// hard. We choose to write a vim extension, not because it is easy, but because',
-      '// it is hard.',
+      '// hard.  We choose to write a vim extension, not because it is easy, but',
+      '// because it is hard.',
     ],
   });
 
@@ -1587,6 +1605,65 @@ suite('Mode Normal', () => {
   });
 
   newTest({
+    title: 'gq leaves alone whitespace within a line',
+    start: ["|Good morning, how are you?  I'm Dr. Worm.", "I'm interested", 'in      things.'],
+    keysPressed: 'gqG',
+    end: ["|Good morning, how are you?  I'm Dr. Worm.  I'm interested in      things."],
+  });
+
+  newTest({
+    title: 'gq breaks at exactly textwidth',
+    start: [
+      '|1 3 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7 9x split',
+    ],
+    keysPressed: 'gqG',
+    end: [
+      '|1 3 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7 9x',
+      'split',
+    ],
+  });
+
+  newTest({
+    title: 'gq breaks before textwidth',
+    start: [
+      '|1 3 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7 9xs split',
+    ],
+    keysPressed: 'gqG',
+    end: [
+      '|1 3 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7',
+      '9xs split',
+    ],
+  });
+
+  newTest({
+    title: 'gq breaks at exactly textwidth with indent and comment',
+    start: [
+      '| // 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7 9 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7 9 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7 9xs split',
+    ],
+    keysPressed: 'gqG',
+    end: [
+      '| // 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7 9',
+      ' // 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7 9',
+      ' // 5 7 911 3 5 7 921 3 5 7 931 3 5 7 941 3 5 7 951 3 5 7 961 3 5 7 971 3 5 7',
+      ' // 9xs split',
+    ],
+  });
+
+  newTest({
+    title: 'gq breaks around long words',
+    start: [
+      '|this is a suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuper long looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong                    word',
+    ],
+    keysPressed: 'gqG',
+    end: [
+      '|this is a',
+      'suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuper',
+      'long looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong',
+      'word',
+    ],
+  });
+
+  newTest({
     title: '<Space> moves cursor one character right',
     start: ['|abc', 'def'],
     keysPressed: ' ',
@@ -1607,153 +1684,6 @@ suite('Mode Normal', () => {
     start: ['ab|c', 'def'],
     keysPressed: ' ',
     end: ['ab|c', 'def'],
-  });
-
-  newTest({
-    title: 'Undo 1',
-    start: ['|'],
-    keysPressed: 'iabc<Esc>adef<Esc>uu',
-    end: ['|'],
-  });
-
-  newTest({
-    title: 'Undo 2',
-    start: ['|'],
-    keysPressed: 'iabc<Esc>adef<Esc>u',
-    end: ['ab|c'],
-  });
-
-  newTest({
-    title: 'Undo cursor',
-    start: ['|'],
-    keysPressed: 'Iabc<Esc>Idef<Esc>Ighi<Esc>uuu',
-    end: ['|'],
-  });
-
-  newTest({
-    title: 'Undo cursor 2',
-    start: ['|'],
-    keysPressed: 'Iabc<Esc>Idef<Esc>Ighi<Esc>uu',
-    end: ['|abc'],
-  });
-
-  newTest({
-    title: 'Undo cursor 3',
-    start: ['|'],
-    keysPressed: 'Iabc<Esc>Idef<Esc>Ighi<Esc>u',
-    end: ['|defabc'],
-  });
-
-  newTest({
-    title: 'Undo with movement first',
-    start: ['|'],
-    keysPressed: 'iabc<Esc>adef<Esc>hlhlu',
-    end: ['ab|c'],
-  });
-
-  newTest({
-    title: "Can handle 'U'",
-    start: ['|'],
-    keysPressed: 'iabc<Esc>U',
-    end: ['|'],
-  });
-
-  newTest({
-    title: "Can handle 'U' for multiple changes",
-    start: ['|'],
-    keysPressed: 'idef<Esc>aghi<Esc>U',
-    end: ['|'],
-  });
-
-  newTest({
-    title: "Can handle 'U' for new line below",
-    start: ['|'],
-    keysPressed: 'iabc<Esc>odef<Esc>U',
-    end: ['abc', '|'],
-  });
-
-  newTest({
-    title: "Can handle 'U' for new line above",
-    start: ['|'],
-    keysPressed: 'iabc<Esc>Odef<Esc>U',
-    end: ['|', 'abc'],
-  });
-
-  newTest({
-    title: "Can handle 'U' for consecutive changes only",
-    start: ['|'],
-    keysPressed: 'iabc<Esc>odef<Esc>kAghi<Esc>U',
-    end: ['ab|c', 'def'],
-  });
-
-  newTest({
-    title: "Can handle 'u' to undo 'U'",
-    start: ['|'],
-    keysPressed: 'iabc<Esc>Uu',
-    end: ['|abc'],
-  });
-
-  newTest({
-    title: "Can handle 'U' to undo 'U'",
-    start: ['|'],
-    keysPressed: 'iabc<Esc>UU',
-    end: ['|abc'],
-  });
-
-  newTest({
-    title: "Can handle 'u' after :s/abc/def",
-    start: ['|'],
-    keysPressed: 'iabc<Esc>:s/abc/def/\nu',
-    end: ['ab|c'],
-  });
-
-  newTest({
-    title: 'Can handle undo delete',
-    start: ['one |two three four five'],
-    keysPressed: 'dwdwu',
-    end: ['one |three four five'],
-  });
-
-  newTest({
-    title: 'Can handle undo delete twice',
-    start: ['one |two three four five'],
-    keysPressed: 'dwdwuu',
-    end: ['one |two three four five'],
-  });
-
-  newTest({
-    title: 'Can handle undo delete with count',
-    start: ['one |two three four five'],
-    keysPressed: 'dwdw2u',
-    end: ['one |two three four five'],
-  });
-
-  newTest({
-    title: 'Can handle undo delete with count and redo',
-    start: ['one |two three four five'],
-    keysPressed: 'dwdw2u<C-r>',
-    end: ['one |three four five'],
-  });
-
-  newTest({
-    title: 'Redo',
-    start: ['|'],
-    keysPressed: 'iabc<Esc>adef<Esc>uu<C-r>',
-    end: ['|abc'],
-  });
-
-  newTest({
-    title: 'Redo',
-    start: ['|'],
-    keysPressed: 'iabc<Esc>adef<Esc>uu<C-r><C-r>',
-    end: ['abc|def'],
-  });
-
-  newTest({
-    title: 'Redo',
-    start: ['|'],
-    keysPressed: 'iabc<Esc>adef<Esc>uuhlhl<C-r><C-r>',
-    end: ['abc|def'],
   });
 
   newTest({
@@ -1958,7 +1888,7 @@ suite('Mode Normal', () => {
 
   newTest({
     title: 'can ctrl-a on an octal ',
-    start: ['07|'],
+    start: ['0|7'],
     keysPressed: '<C-a>',
     end: ['01|0'],
   });
@@ -2401,6 +2331,20 @@ suite('Mode Normal', () => {
     keysPressed: 'cit',
     end: ['<div>|</div>'],
     endMode: Mode.Insert,
+  });
+
+  newTest({
+    title: 'yk moves cursor up',
+    start: ['one', 't|wo', 'three'],
+    keysPressed: 'yk',
+    end: ['o|ne', 'two', 'three'],
+  });
+
+  newTest({
+    title: 'yh moves cursor left',
+    start: ['one', 'two', 'thr|ee'],
+    keysPressed: 'yh',
+    end: ['one', 'two', 'th|ree'],
   });
 
   newTest({
@@ -3035,11 +2979,11 @@ suite('Mode Normal', () => {
     });
 
     newTest({
-      title: 'cgn deletes the next word when cursor is at hello|',
-      start: ['|foo', 'hello world', 'hello', 'hello'],
-      keysPressed: '/hello\nelcgn',
-      end: ['foo', 'hello world', '|', 'hello'],
-      endMode: Mode.Insert,
+      title: '`cgn` can be repeated by dot',
+      start: ['|', 'one', 'two', 'one', 'three'],
+      keysPressed: '/one\n' + 'cgn' + 'XYZ' + '<Esc>' + '..',
+      end: ['', 'XYZ', 'two', 'XY|Z', 'three'],
+      endMode: Mode.Normal,
     });
   });
 

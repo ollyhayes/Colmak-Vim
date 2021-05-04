@@ -35,6 +35,7 @@ export const optionAliases: ReadonlyMap<string, string> = new Map<string, string
   ['ic', 'ignorecase'],
   ['is', 'incsearch'],
   ['isk', 'iskeyword'],
+  ['js', 'joinspaces'],
   ['mmd', 'maxmapdepth'],
   ['nu', 'number'],
   ['rnu', 'relativenumber'],
@@ -99,7 +100,7 @@ class Configuration implements IConfiguration {
   };
 
   public async load(): Promise<ValidatorResults> {
-    const vimConfigs: any = Globals.isTesting
+    const vimConfigs: { [key: string]: any } = Globals.isTesting
       ? Globals.mockConfiguration
       : this.getConfiguration('vim');
 
@@ -217,6 +218,8 @@ class Configuration implements IConfiguration {
   smartcase = true;
 
   autoindent = true;
+
+  joinspaces = true;
 
   camelCaseMotion: ICamelCaseMotionConfiguration = {
     enable: true,

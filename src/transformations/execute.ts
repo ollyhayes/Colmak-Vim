@@ -7,7 +7,7 @@ import {
   isMultiCursorTextTransformation,
   InsertTextVSCodeTransformation,
   areAllSameTransformation,
-  areAnyTransformationsOverlapping,
+  overlappingTransformations,
 } from './transformations';
 import { commandLine } from '../cmd_line/commandLine';
 import { PairMatcher } from '../common/matching/matcher';
@@ -23,6 +23,7 @@ import { Range } from '../common/motion/range';
 import { Position } from 'vscode';
 import { VimState } from '../state/vimState';
 import { Transformer } from './transformer';
+import { Globals } from '../globals';
 
 export interface IModeHandler {
   vimState: VimState;
@@ -99,12 +100,13 @@ export async function executeTransformations(
   };
 
   if (textTransformations.length > 0) {
-    if (areAnyTransformationsOverlapping(textTransformations)) {
-      logger.debug(
-        `Text transformations are overlapping. Falling back to serial
-          transformations. This is generally a very bad sign. Try to make
-          your text transformations operate on non-overlapping ranges.`
-      );
+    const overlapping = overlappingTransformations(textTransformations);
+    if (overlapping !== undefined) {
+      const msg = `Transformations overlapping: ${JSON.stringify(overlapping)}`;
+      logger.warn(msg);
+      if (Globals.isTesting) {
+        throw new Error(msg);
+      }
 
       // TODO: Select one transformation for every cursor and run them all
       // in parallel. Repeat till there are no more transformations.
@@ -187,22 +189,19 @@ export async function executeTransformations(
         }
         break;
 
-      case 'dot':
-        if (!globalState.previousFullAction) {
-          return; // TODO(bell)
-        }
-
-        await modeHandler.rerunRecordedState(globalState.previousFullAction.clone());
+      case 'replayRecordedState':
+        await modeHandler.rerunRecordedState(transformation.recordedState.clone());
         break;
 
       case 'macro':
-        const recordedMacro = (await Register.get(vimState, transformation.register))?.text;
+        const recordedMacro = (await Register.get(transformation.register))?.text;
         if (!(recordedMacro instanceof RecordedState)) {
           return;
         }
 
         vimState.isReplayingMacro = true;
 
+        vimState.recordedState = new RecordedState();
         if (transformation.register === ':') {
           await commandLine.Run(recordedMacro.commandString, vimState);
         } else if (transformation.replay === 'contentChange') {
@@ -212,9 +211,13 @@ export async function executeTransformations(
           for (const action of recordedMacro.actionsRun) {
             keyStrokes = keyStrokes.concat(action.keysPressed);
           }
-          vimState.recordedState = new RecordedState();
           await modeHandler.handleMultipleKeyEvents(keyStrokes);
         }
+
+        await executeTransformations(
+          modeHandler,
+          vimState.recordedState.transformer.transformations
+        );
 
         vimState.isReplayingMacro = false;
         vimState.lastInvokedMacro = recordedMacro;
