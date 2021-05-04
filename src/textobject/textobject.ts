@@ -551,7 +551,7 @@ export class SelectEntire extends TextObjectMovement {
 
 @RegisterAction
 export class SelectEntireIgnoringLeadingTrailing extends TextObjectMovement {
-  keys = ['i', 'e'];
+  keys = ['l', 'e'];
 
   public async execAction(position: Position, vimState: VimState): Promise<IMovement> {
     let start: Position = TextEditor.getDocumentBegin();
@@ -956,7 +956,7 @@ abstract class SelectArgument extends TextObjectMovement {
 @RegisterAction
 export class SelectInnerArgument extends SelectArgument {
   modes = [Mode.Normal, Mode.Visual];
-  keys = ['i', 'a'];
+  keys = ['l', 'a'];
 }
 
 @RegisterAction

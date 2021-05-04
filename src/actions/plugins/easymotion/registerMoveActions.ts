@@ -145,7 +145,7 @@ class EasyMotionStartOfWordBidirectionalCommand extends EasyMotionWordMoveComman
 @RegisterAction
 class EasyMotionLineForward extends EasyMotionWordMoveCommandBase {
   constructor() {
-    super({ key: 'l' }, { jumpToAnywhere: true, searchOptions: 'min', labelPosition: 'after' });
+    super({ key: 'i' }, { jumpToAnywhere: true, searchOptions: 'min', labelPosition: 'after' });
   }
 }
 
