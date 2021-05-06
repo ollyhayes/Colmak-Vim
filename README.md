@@ -11,7 +11,7 @@ This is a fork of [VSCodeVim](https://github.com/VSCodeVim/Vim) that remaps the 
 | next search |  n  |      k      |
 | insert mode |  i  |      l      |
 
-For bugs that appear to come from these remappings (I don't use all the features myself so there's a good change I miss something), feel free to open an [issue](https://github.com/ollyhayes/Colemak-Vim/issues/new/choose) in this repository. Or even better, a pull request.
+For bugs that appear to come from these remappings (I don't use all the features myself so there's a good chance I miss something), feel free to open an [issue](https://github.com/ollyhayes/Colemak-Vim/issues/new/choose) in this repository. Or even better, a pull request.
 
 Check out the "Files changed" tab here to see how I did this: [github.com/VSCodeVim/Vim/compare/master...ollyhayes:master](https://github.com/VSCodeVim/Vim/compare/master...ollyhayes:master).
 
