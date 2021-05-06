@@ -1,15 +1,19 @@
 ## Colemak-Vim
 
-This is a fork of the usual VSCodeVim emulator that defines the arrow keys at hnei instead of hjkl so they're in the correct place for colemak.
+This is a fork of [VSCodeVim](https://github.com/VSCodeVim/Vim) that remaps the arrow keys at `hnei` instead of `hjkl` so they're in the correct place for the [Colemak](https://colemak.com/) keyboard layout.
 
-Re-mappings - qwerty -> colemak:
+| Mapping     | Vim | Colemak-Vim |
+| ----------- | :-: | :---------: |
+| down        |  j  |      n      |
+| up          |  k  |      e      |
+| right       |  l  |      i      |
+| end of word |  e  |      j      |
+| next search |  n  |      k      |
+| insert mode |  i  |      l      |
 
-- n -> j (down)
-- e -> k (up)
-- i -> l (right)
-- j -> e (end of word)
-- k -> n (next in search)
-- l -> i (insert mode)
+For bugs that appear to come from these remappings (I don't use all the features myself so there's a good change I miss something), feel free to open an [issue](https://github.com/ollyhayes/Colemak-Vim/issues/new/choose) in this repository. Or even better, a pull request.
+
+Check out the "Files changed" tab here to see how I did this: [github.com/VSCodeVim/Vim/compare/master...ollyhayes:master](https://github.com/VSCodeVim/Vim/compare/master...ollyhayes:master).
 
 ## Original overview:
 
