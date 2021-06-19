@@ -4,7 +4,7 @@ import { getAndUpdateModeHandler } from '../../extension';
 import { Mode } from '../../src/mode/mode';
 import { ModeHandler } from '../../src/mode/modeHandler';
 import { Configuration } from '../testConfiguration';
-import { newTest, newTestSkip } from '../testSimplifier';
+import { newTest } from '../testSimplifier';
 import { cleanUpWorkspace, setupWorkspace } from './../testUtils';
 
 suite('Mode Normal', () => {
@@ -602,6 +602,39 @@ suite('Mode Normal', () => {
     endMode: Mode.Insert,
   });
 
+  // TODO: these tests should be organanized and combined with the ones below - vi'c should be the same as ci', for instance
+  newTest({
+    title: "Can handle 'vi'c' on first quote",
+    start: ["one |'two' three"],
+    keysPressed: "vi'c",
+    end: ["one '|' three"],
+    endMode: Mode.Insert,
+  });
+
+  newTest({
+    title: "Can handle 'vi'c' inside quoted string",
+    start: ["one 't|wo' three"],
+    keysPressed: "vi'c",
+    end: ["one '|' three"],
+    endMode: Mode.Insert,
+  });
+
+  newTest({
+    title: "Can handle 'vi'c' on closing quote",
+    start: ["one 'two|' three"],
+    keysPressed: "vi'c",
+    end: ["one '|' three"],
+    endMode: Mode.Insert,
+  });
+
+  newTest({
+    title: "Can handle 'vi'c' when string is ahead",
+    start: ["on|e 'two' three"],
+    keysPressed: "vi'c",
+    end: ["one '|' three"],
+    endMode: Mode.Insert,
+  });
+
   newTest({
     title: "Can handle 'ci'' on first quote",
     start: ["|'one'"],
@@ -651,10 +684,26 @@ suite('Mode Normal', () => {
   });
 
   newTest({
+    title: "'ci\"' correctly matches quotes on line when starting on quote character",
+    start: ['one "two|" three "four"'],
+    keysPressed: 'ci"',
+    end: ['one "|" three "four"'],
+    endMode: Mode.Insert,
+  });
+
+  newTest({
+    title: "'ci\"' fails when starting on unmatched quote character",
+    start: ['one "two" three "four" five|" six'],
+    keysPressed: 'ci"',
+    end: ['one "two" three "four" five|" six'],
+    endMode: Mode.Normal,
+  });
+
+  newTest({
     title: "Can handle 'ca\"' starting behind the quoted word",
     start: ['|one "two"'],
     keysPressed: 'ca"',
-    end: ['one |'],
+    end: ['one|'],
     endMode: Mode.Insert,
   });
 
@@ -662,7 +711,31 @@ suite('Mode Normal', () => {
     title: "Can handle 'ca\"' starting on the opening quote",
     start: ['one |"two"'],
     keysPressed: 'ca"',
-    end: ['one |'],
+    end: ['one|'],
+    endMode: Mode.Insert,
+  });
+
+  newTest({
+    title: "'ca\"' includes trailing whitespace",
+    start: ['one "t|wo"            three'],
+    keysPressed: 'ca"',
+    end: ['one |three'],
+    endMode: Mode.Insert,
+  });
+
+  newTest({
+    title: "'ca\"' includes trailing whitespace 2",
+    start: ['one "t|wo"   ', 'three'],
+    keysPressed: 'ca"',
+    end: ['one |', 'three'],
+    endMode: Mode.Insert,
+  });
+
+  newTest({
+    title: "'ca\"' includes leading whitespace if there is no trailing whitespace",
+    start: ['one      "t|wo"three'],
+    keysPressed: 'ca"',
+    end: ['one|three'],
     endMode: Mode.Insert,
   });
 
@@ -710,7 +783,7 @@ suite('Mode Normal', () => {
     title: "Can handle 'ca\"' starting on the closing quote",
     start: ['one "two|"'],
     keysPressed: 'ca"',
-    end: ['one |'],
+    end: ['one|'],
     endMode: Mode.Insert,
   });
 
@@ -742,7 +815,7 @@ suite('Mode Normal', () => {
     title: "Can handle 'ca`' inside word",
     start: ['one `t|wo`'],
     keysPressed: 'ca`',
-    end: ['one |'],
+    end: ['one|'],
     endMode: Mode.Insert,
   });
 
@@ -1393,54 +1466,85 @@ suite('Mode Normal', () => {
     end: ['one', 'tw|o'],
   });
 
-  newTest({
-    title: 'Can repeat w',
-    start: ['|one two three four'],
-    keysPressed: '2w',
-    end: ['one two |three four'],
+  suite('I', () => {
+    newTest({
+      title: 'I enters insert mode at start of line after any whitespace',
+      start: ['  on|e'],
+      keysPressed: 'I',
+      end: ['  |one'],
+      endMode: Mode.Insert,
+    });
+
+    newTest({
+      title: '[count]I',
+      start: ['  on|e'],
+      keysPressed: '2Itest<Esc>',
+      end: ['  testtes|tone'],
+    });
   });
 
-  newTest({
-    title: 'I works correctly',
-    start: ['|    one'],
-    keysPressed: 'Itest <Esc>',
-    end: ['    test| one'],
+  suite('gI', () => {
+    newTest({
+      title: 'gI enters insert mode at start of line',
+      start: ['    o|ne'],
+      keysPressed: 'gItest',
+      end: ['test|    one'],
+      endMode: Mode.Insert,
+    });
+
+    newTest({
+      title: '[count]gI',
+      start: ['    o|ne'],
+      keysPressed: '3gIab<Esc>',
+      end: ['ababa|b    one'],
+      endMode: Mode.Normal,
+    });
   });
 
-  newTest({
-    title: 'gI works correctly',
-    start: ['|    one'],
-    keysPressed: 'gItest<Esc>',
-    end: ['tes|t    one'],
-  });
+  suite('gi', () => {
+    newTest({
+      title: '`gi` enters insert mode at point of last insertion',
+      start: ['|'],
+      keysPressed: 'ione<Esc>otwo<Esc>0gi',
+      end: ['one', 'two|'],
+      endMode: Mode.Insert,
+    });
 
-  newTest({
-    title: '`gi` enters insert mode at point of last insertion',
-    start: ['|'],
-    keysPressed: 'ione<Esc>otwo<Esc>0gi',
-    end: ['one', 'two|'],
-    endMode: Mode.Insert,
-  });
+    newTest({
+      title: '`[count]gi`',
+      start: ['|'],
+      keysPressed: 'ione<Esc>otwo<Esc>03giab<Esc>',
+      end: ['one', 'twoababa|b'],
+      endMode: Mode.Normal,
+    });
 
-  // TODO: this gets messed up by test framework inserting start text, I think
-  newTestSkip({
-    title: "`gi` enters insert mode at start of document if there's no prior insertion",
-    start: ['one', 'two', 'thr|ee'],
-    keysPressed: 'gi',
-    end: ['|one', 'two', 'three'],
-    endMode: Mode.Insert,
+    newTest({
+      title: "`gi` enters insert mode at start of document if there's no prior insertion",
+      start: ['one', 'two', 'thr|ee'],
+      keysPressed: 'gi',
+      end: ['|one', 'two', 'three'],
+      endMode: Mode.Insert,
+    });
+
+    newTest({
+      title: '`gi` after (c)hange',
+      start: ['one |two three'],
+      keysPressed: 'cwab<Esc>0gi',
+      end: ['one ab| three'],
+      endMode: Mode.Insert,
+    });
   });
 
   newTest({
     title: '`. works correctly',
-    start: ['one|'],
+    start: ['on|e'],
     keysPressed: 'atwo<Esc>`.',
     end: ['one|two'],
   });
 
   newTest({
     title: "'. works correctly",
-    start: ['one|'],
+    start: ['on|e'],
     keysPressed: "atwo<Esc>'.",
     end: ['one|two'],
   });

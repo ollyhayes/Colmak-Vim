@@ -3,7 +3,7 @@ import { window, QuickPickItem } from 'vscode';
 import * as node from '../node';
 import { VimState } from '../../state/vimState';
 import { IMark } from '../../history/historyTracker';
-import { Range } from '../../common/motion/range';
+import { Cursor } from '../../common/motion/cursor';
 import { StatusBar } from '../../statusBar';
 import { ErrorCode, VimError } from '../../error';
 
@@ -25,6 +25,7 @@ class MarkQuickPickItem implements QuickPickItem {
 }
 
 export class MarksCommand extends node.CommandBase {
+  public override readonly acceptsRange = false;
   private marksFilter?: string[];
 
   constructor(marksFilter?: string[]) {
@@ -45,7 +46,7 @@ export class MarksCommand extends node.CommandBase {
         canPickMany: false,
       });
       if (item) {
-        vimState.cursors = [new Range(item.mark.position, item.mark.position)];
+        vimState.cursors = [new Cursor(item.mark.position, item.mark.position)];
       }
     } else {
       window.showInformationMessage('No marks set');
@@ -54,6 +55,7 @@ export class MarksCommand extends node.CommandBase {
 }
 
 export class DeleteMarksCommand extends node.CommandBase {
+  public override readonly acceptsRange = false;
   private numbers = '0123456789';
   private numberRange = /([0-9])-([0-9])/;
   private letterRange = /([a-zA-Z])-([a-zA-Z])/;

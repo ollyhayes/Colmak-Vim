@@ -11,7 +11,7 @@ import { reportLinesChanged } from '../../util/statusBarTextUtils';
 import { BaseCommand, RegisterAction } from '../base';
 import { StatusBar } from '../../statusBar';
 import { VimError, ErrorCode } from '../../error';
-import { Range } from '../../common/motion/range';
+import { Cursor } from '../../common/motion/cursor';
 import { Transformation } from '../../transformations/transformations';
 
 function firstNonBlankChar(text: string): number {
@@ -20,9 +20,9 @@ function firstNonBlankChar(text: string): number {
 
 abstract class BasePutCommand extends BaseCommand {
   modes = [Mode.Normal, Mode.Visual, Mode.VisualLine, Mode.VisualBlock];
-  canBeRepeatedWithDot = true;
+  override canBeRepeatedWithDot = true;
 
-  public async exec(position: Position, vimState: VimState): Promise<void> {
+  public override async exec(position: Position, vimState: VimState): Promise<void> {
     const register = await Register.get(vimState.recordedState.registerName, this.multicursorIndex);
     if (register === undefined) {
       StatusBar.displayError(vimState, VimError.fromCode(ErrorCode.NothingInRegister));
@@ -95,12 +95,7 @@ abstract class BasePutCommand extends BaseCommand {
       };
 
       vimState.recordedState.registerName = configuration.useSystemClipboard ? '*' : '"';
-      Register.put(
-        vimState,
-        vimState.document.getText(new vscode.Range(replaceRange.start, replaceRange.stop)),
-        this.multicursorIndex,
-        true
-      );
+      Register.put(vimState, vimState.document.getText(replaceRange), this.multicursorIndex, true);
     }
 
     // Report lines changed
@@ -158,7 +153,7 @@ abstract class BasePutCommand extends BaseCommand {
   private getTransformations(
     document: TextDocument,
     mode: Mode,
-    replaceRange: Range,
+    replaceRange: vscode.Range,
     registerMode: RegisterMode,
     text: string
   ): Transformation[] {
@@ -166,10 +161,7 @@ abstract class BasePutCommand extends BaseCommand {
     if (registerMode === RegisterMode.BlockWise && mode !== Mode.VisualLine) {
       const transformations: Transformation[] = [];
       const lines = text.split('\n');
-      const lineCount = Math.max(
-        lines.length,
-        replaceRange.stop.line - replaceRange.start.line + 1
-      );
+      const lineCount = Math.max(lines.length, replaceRange.end.line - replaceRange.start.line + 1);
 
       // Only relevant for Visual mode
       // If we replace 2 newlines, subsequent transformations need to take that into account (otherwise we get overlaps)
@@ -178,15 +170,15 @@ abstract class BasePutCommand extends BaseCommand {
       for (let idx = 0; idx < lineCount; idx++) {
         const lineText = lines[idx] ?? '';
 
-        let range: Range;
+        let range: vscode.Range;
         if (mode === Mode.VisualBlock) {
-          if (replaceRange.start.line + idx > replaceRange.stop.line) {
+          if (replaceRange.start.line + idx > replaceRange.end.line) {
             const pos = replaceRange.start.with({ line: replaceRange.start.line + idx });
-            range = new Range(pos, pos);
+            range = new vscode.Range(pos, pos);
           } else {
-            range = new Range(
+            range = new vscode.Range(
               replaceRange.start.with({ line: replaceRange.start.line + idx }),
-              replaceRange.stop.with({ line: replaceRange.start.line + idx })
+              replaceRange.end.with({ line: replaceRange.start.line + idx })
             );
           }
         } else {
@@ -194,11 +186,10 @@ abstract class BasePutCommand extends BaseCommand {
             const pos = replaceRange.start.with({
               line: replaceRange.start.line + idx + deletedNewlines,
             });
-            range = new Range(pos, pos);
+            range = new vscode.Range(pos, pos);
           } else {
-            range = replaceRange;
-            deletedNewlines =
-              document.getText(new vscode.Range(range.start, range.stop)).split('\n').length - 1;
+            range = new vscode.Range(replaceRange.start, replaceRange.end);
+            deletedNewlines = document.getText(range).split('\n').length - 1;
           }
         }
 
@@ -235,10 +226,10 @@ abstract class BasePutCommand extends BaseCommand {
     } else if (mode === Mode.VisualBlock) {
       const transformations: Transformation[] = [];
       if (registerMode === RegisterMode.CharacterWise) {
-        for (let line = replaceRange.start.line; line <= replaceRange.stop.line; line++) {
-          const range = new Range(
+        for (let line = replaceRange.start.line; line <= replaceRange.end.line; line++) {
+          const range = new vscode.Range(
             new Position(line, replaceRange.start.character),
-            new Position(line, replaceRange.stop.character)
+            new Position(line, replaceRange.end.character)
           );
           const lineText = !text.includes('\n') || line === replaceRange.start.line ? text : '';
           transformations.push({
@@ -249,10 +240,10 @@ abstract class BasePutCommand extends BaseCommand {
         }
       } else if (registerMode === RegisterMode.LineWise) {
         // Weird case: first delete the block...
-        for (let line = replaceRange.start.line; line <= replaceRange.stop.line; line++) {
-          const range = new Range(
+        for (let line = replaceRange.start.line; line <= replaceRange.end.line; line++) {
+          const range = new vscode.Range(
             new Position(line, replaceRange.start.character),
-            new Position(line, replaceRange.stop.character)
+            new Position(line, replaceRange.end.character)
           );
           transformations.push({
             type: 'replaceText',
@@ -264,10 +255,10 @@ abstract class BasePutCommand extends BaseCommand {
         // ...then paste the lines before/after the block
         const insertPos = this.putBefore()
           ? new Position(replaceRange.start.line, 0)
-          : new Position(replaceRange.stop.line, 0).getLineEnd();
+          : new Position(replaceRange.end.line, 0).getLineEnd();
         transformations.push({
           type: 'replaceText',
-          range: new Range(insertPos, insertPos),
+          range: new vscode.Range(insertPos, insertPos),
           text,
         });
       } else {
@@ -283,7 +274,11 @@ abstract class BasePutCommand extends BaseCommand {
 
   protected abstract getRegisterMode(register: IRegisterContent): RegisterMode;
 
-  protected abstract getReplaceRange(mode: Mode, cursor: Range, registerMode: RegisterMode): Range;
+  protected abstract getReplaceRange(
+    mode: Mode,
+    cursor: Cursor,
+    registerMode: RegisterMode
+  ): vscode.Range;
 
   protected abstract adjustLinewiseRegisterText(mode: Mode, text: string): string;
 
@@ -292,7 +287,7 @@ abstract class BasePutCommand extends BaseCommand {
   protected abstract getCursorPosition(
     document: TextDocument,
     mode: Mode,
-    replaceRange: Range,
+    replaceRange: vscode.Range,
     registerMode: RegisterMode,
     count: number,
     text: string
@@ -311,7 +306,7 @@ class PutCommand extends BasePutCommand {
     return register.registerMode;
   }
 
-  protected getReplaceRange(mode: Mode, cursor: Range, registerMode: RegisterMode): Range {
+  protected getReplaceRange(mode: Mode, cursor: Cursor, registerMode: RegisterMode): vscode.Range {
     if (mode === Mode.Normal) {
       let pos: Position;
       if (registerMode === RegisterMode.CharacterWise || registerMode === RegisterMode.BlockWise) {
@@ -321,16 +316,16 @@ class PutCommand extends BasePutCommand {
       } else {
         throw new Error(`Unexpected RegisterMode ${registerMode}`);
       }
-      return new Range(pos, pos);
+      return new vscode.Range(pos, pos);
     } else if (mode === Mode.Visual) {
       const [start, end] = sorted(cursor.start, cursor.stop);
-      return new Range(start, end.getRight());
+      return new vscode.Range(start, end.getRight());
     } else if (mode === Mode.VisualLine) {
       const [start, end] = sorted(cursor.start, cursor.stop);
-      return new Range(start.getLineBegin(), end.getLineEnd());
+      return new vscode.Range(start.getLineBegin(), end.getLineEnd());
     } else {
       const [start, end] = sorted(cursor.start, cursor.stop);
-      return new Range(start, end.getRight());
+      return new vscode.Range(start, end.getRight());
     }
   }
 
@@ -351,7 +346,7 @@ class PutCommand extends BasePutCommand {
   protected getCursorPosition(
     document: TextDocument,
     mode: Mode,
-    replaceRange: Range,
+    replaceRange: vscode.Range,
     registerMode: RegisterMode,
     count: number,
     text: string
@@ -371,7 +366,7 @@ class PutCommand extends BasePutCommand {
       return rangeStart.with({ character: firstNonBlankChar(text) });
     } else if (mode === Mode.VisualBlock) {
       if (registerMode === RegisterMode.LineWise) {
-        return new Position(replaceRange.stop.line + 1, firstNonBlankChar(text));
+        return new Position(replaceRange.end.line + 1, firstNonBlankChar(text));
       } else if (registerMode === RegisterMode.BlockWise) {
         return rangeStart;
       } else {
@@ -385,13 +380,13 @@ class PutCommand extends BasePutCommand {
 
 @RegisterAction
 class PutBeforeCommand extends PutCommand {
-  keys: string[] | string[][] = ['P'];
+  override keys: string[] | string[][] = ['P'];
 
-  protected putBefore(): boolean {
+  protected override putBefore(): boolean {
     return true;
   }
 
-  protected adjustLinewiseRegisterText(mode: Mode, text: string): string {
+  protected override adjustLinewiseRegisterText(mode: Mode, text: string): string {
     if (mode === Mode.Normal || mode === Mode.VisualBlock) {
       return text + '\n';
     }
@@ -399,24 +394,28 @@ class PutBeforeCommand extends PutCommand {
     return super.adjustLinewiseRegisterText(mode, text);
   }
 
-  protected getReplaceRange(mode: Mode, cursor: Range, registerMode: RegisterMode): Range {
+  protected override getReplaceRange(
+    mode: Mode,
+    cursor: Cursor,
+    registerMode: RegisterMode
+  ): vscode.Range {
     if (mode === Mode.Normal) {
       if (registerMode === RegisterMode.CharacterWise || registerMode === RegisterMode.BlockWise) {
         const pos = cursor.stop;
-        return new Range(pos, pos);
+        return new vscode.Range(pos, pos);
       } else if (registerMode === RegisterMode.LineWise) {
         const pos = cursor.stop.getLineBegin();
-        return new Range(pos, pos);
+        return new vscode.Range(pos, pos);
       }
     }
 
     return super.getReplaceRange(mode, cursor, registerMode);
   }
 
-  protected getCursorPosition(
+  protected override getCursorPosition(
     document: TextDocument,
     mode: Mode,
-    replaceRange: Range,
+    replaceRange: vscode.Range,
     registerMode: RegisterMode,
     count: number,
     text: string
@@ -434,10 +433,10 @@ class PutBeforeCommand extends PutCommand {
 
 function PlaceCursorAfterText<TBase extends new (...args: any[]) => PutCommand>(Base: TBase) {
   return class CursorAfterText extends Base {
-    protected getCursorPosition(
+    protected override getCursorPosition(
       document: TextDocument,
       mode: Mode,
-      replaceRange: Range,
+      replaceRange: vscode.Range,
       registerMode: RegisterMode,
       count: number,
       text: string
@@ -477,7 +476,7 @@ function PlaceCursorAfterText<TBase extends new (...args: any[]) => PutCommand>(
           if (this.putBefore()) {
             return new Position(rangeStart.line + lines.length, 0);
           } else {
-            return new Position(replaceRange.stop.line + lines.length + 1, 0);
+            return new Position(replaceRange.end.line + lines.length + 1, 0);
           }
         } else if (registerMode === RegisterMode.BlockWise) {
           return new Position(
@@ -497,18 +496,18 @@ function PlaceCursorAfterText<TBase extends new (...args: any[]) => PutCommand>(
 @RegisterAction
 @PlaceCursorAfterText
 class GPutCommand extends PutCommand {
-  keys = ['g', 'p'];
+  override keys = ['g', 'p'];
 }
 
 @RegisterAction
 @PlaceCursorAfterText
 class GPutBeforeCommand extends PutBeforeCommand {
-  keys = ['g', 'P'];
+  override keys = ['g', 'P'];
 }
 
 function AdjustIndent<TBase extends new (...args: any[]) => PutCommand>(Base: TBase) {
   return class AdjustedIndent extends Base {
-    protected shouldAdjustIndent(mode: Mode, registerMode: RegisterMode): boolean {
+    protected override shouldAdjustIndent(mode: Mode, registerMode: RegisterMode): boolean {
       return (
         (mode === Mode.Normal || mode === Mode.VisualLine) && registerMode === RegisterMode.LineWise
       );
@@ -519,13 +518,13 @@ function AdjustIndent<TBase extends new (...args: any[]) => PutCommand>(Base: TB
 @RegisterAction
 @AdjustIndent
 class PutWithIndentCommand extends PutCommand {
-  keys = [']', 'p'];
+  override keys = [']', 'p'];
 }
 
 @RegisterAction
 @AdjustIndent
 class PutBeforeWithIndentCommand extends PutBeforeCommand {
-  keys = [
+  override keys = [
     ['[', 'P'],
     [']', 'P'],
     ['[', 'p'],
@@ -540,20 +539,24 @@ function ExCommand<TBase extends new (...args: any[]) => PutCommand>(Base: TBase
       this.insertLine = insertLine;
     }
 
-    protected getRegisterMode(register: IRegisterContent): RegisterMode {
+    protected override getRegisterMode(register: IRegisterContent): RegisterMode {
       return RegisterMode.LineWise;
     }
 
-    protected getReplaceRange(mode: Mode, cursor: Range, registerMode: RegisterMode): Range {
+    protected override getReplaceRange(
+      mode: Mode,
+      cursor: Cursor,
+      registerMode: RegisterMode
+    ): vscode.Range {
       const line = this.insertLine ?? laterOf(cursor.start, cursor.stop).line;
       const pos = this.putBefore() ? new Position(line, 0) : new Position(line, 0).getLineEnd();
-      return new Range(pos, pos);
+      return new vscode.Range(pos, pos);
     }
 
-    protected getCursorPosition(
+    protected override getCursorPosition(
       document: TextDocument,
       mode: Mode,
-      replaceRange: Range,
+      replaceRange: vscode.Range,
       registerMode: RegisterMode,
       count: number,
       text: string

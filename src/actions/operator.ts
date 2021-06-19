@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 import { PositionDiff, earlierOf, sorted } from './../common/motion/position';
-import { Range } from './../common/motion/range';
 import { configuration } from './../configuration/configuration';
 import { Mode, isVisualMode } from './../mode/mode';
 import { Register, RegisterMode } from './../register/register';
@@ -14,15 +13,15 @@ import { commandLine } from './../cmd_line/commandLine';
 import { Position } from 'vscode';
 
 export abstract class BaseOperator extends BaseAction {
-  isOperator = true;
+  override isOperator = true;
 
   constructor(multicursorIndex?: number) {
     super();
     this.multicursorIndex = multicursorIndex;
   }
-  canBeRepeatedWithDot = true;
+  override canBeRepeatedWithDot = true;
 
-  public doesActionApply(vimState: VimState, keysPressed: string[]): boolean {
+  public override doesActionApply(vimState: VimState, keysPressed: string[]): boolean {
     if (this.doesRepeatedOperatorApply(vimState, keysPressed)) {
       return true;
     }
@@ -45,7 +44,7 @@ export abstract class BaseOperator extends BaseAction {
     return true;
   }
 
-  public couldActionApply(vimState: VimState, keysPressed: string[]): boolean {
+  public override couldActionApply(vimState: VimState, keysPressed: string[]): boolean {
     if (!this.modes.includes(vimState.currentMode)) {
       return false;
     }
@@ -199,7 +198,7 @@ export class DeleteOperator extends BaseOperator {
 
     vimState.recordedState.transformer.addTransformation({
       type: 'deleteRange',
-      range: new Range(start, end),
+      range: new vscode.Range(start, end),
       diff,
     });
 
@@ -244,19 +243,9 @@ class DeleteOperatorVisual extends BaseOperator {
 export class YankOperator extends BaseOperator {
   public keys = ['y'];
   public modes = [Mode.Normal, Mode.Visual, Mode.VisualLine];
-  canBeRepeatedWithDot = false;
+  override canBeRepeatedWithDot = false;
 
   public async run(vimState: VimState, start: Position, end: Position): Promise<void> {
-    // HACK: make Surround with y (which takes a motion) work.
-    if (vimState.surround) {
-      vimState.surround.range = new vscode.Range(start, end);
-      await vimState.setCurrentMode(Mode.SurroundInputMode);
-      vimState.cursorStopPosition = start;
-      vimState.cursorStartPosition = start;
-
-      return;
-    }
-
     [start, end] = sorted(start, end);
     let extendedEnd = new Position(end.line, end.character + 1);
 
@@ -354,7 +343,7 @@ class ChangeOperatorSVisual extends BaseOperator {
   public modes = [Mode.Visual, Mode.VisualLine];
 
   // Don't clash with Sneak plugin
-  public doesActionApply(vimState: VimState, keysPressed: string[]): boolean {
+  public override doesActionApply(vimState: VimState, keysPressed: string[]): boolean {
     return super.doesActionApply(vimState, keysPressed) && !configuration.sneak;
   }
 
@@ -385,98 +374,100 @@ class FormatOperator extends BaseOperator {
   }
 }
 
-@RegisterAction
-class UpperCaseOperator extends BaseOperator {
-  public keys = [['g', 'U'], ['U']];
-  public modes = [Mode.Visual, Mode.VisualLine];
+abstract class ChangeCaseOperator extends BaseOperator {
+  public modes = [Mode.Visual, Mode.VisualLine, Mode.VisualBlock];
 
-  public async run(vimState: VimState, start: Position, end: Position): Promise<void> {
-    if (vimState.effectiveRegisterMode === RegisterMode.LineWise) {
-      start = start.getLineBegin();
-      end = end.getLineEnd();
+  abstract transformText(text: string): string;
+
+  public async run(vimState: VimState, startPos: Position, endPos: Position): Promise<void> {
+    if (vimState.currentMode === Mode.VisualBlock) {
+      for (const { start, end } of TextEditor.iterateLinesInBlock(vimState)) {
+        const range = new vscode.Range(start, end);
+        vimState.recordedState.transformer.replace(
+          range,
+          this.transformText(vimState.document.getText(range))
+        );
+      }
+
+      // HACK: currently must do this nonsense to collapse all cursors into one
+      for (let i = 0; i < vimState.editor.selections.length; i++) {
+        vimState.recordedState.transformer.addTransformation({
+          type: 'moveCursor',
+          diff: PositionDiff.exactPosition(earlierOf(startPos, endPos)),
+          cursorIndex: i,
+        });
+      }
+    } else {
+      if (vimState.effectiveRegisterMode === RegisterMode.LineWise) {
+        startPos = startPos.getLineBegin();
+        endPos = endPos.getLineEnd();
+      }
+
+      const range = new vscode.Range(startPos, new Position(endPos.line, endPos.character + 1));
+
+      vimState.recordedState.transformer.addTransformation({
+        type: 'replaceText',
+        range,
+        text: this.transformText(vimState.document.getText(range)),
+        diff: PositionDiff.exactPosition(startPos),
+      });
     }
 
-    const range = new vscode.Range(start, new Position(end.line, end.character + 1));
-    const text = vimState.document.getText(range);
-
-    await TextEditor.replace(vimState.editor, range, text.toUpperCase());
-
     await vimState.setCurrentMode(Mode.Normal);
-    vimState.cursorStopPosition = start;
-    vimState.desiredColumn = start.character;
+  }
+}
+
+@RegisterAction
+class UpperCaseOperator extends ChangeCaseOperator {
+  public keys = [['g', 'U'], ['U']];
+
+  public transformText(text: string): string {
+    return text.toUpperCase();
   }
 }
 
 @RegisterAction
 class UpperCaseWithMotion extends UpperCaseOperator {
-  public keys = [['g', 'U']];
-  public modes = [Mode.Normal];
+  public override keys = [['g', 'U']];
+  public override modes = [Mode.Normal];
 }
 
 @RegisterAction
-class UpperCaseVisualBlockOperator extends BaseOperator {
-  public keys = [['g', 'U'], ['U']];
-  public modes = [Mode.VisualBlock];
-
-  public async run(vimState: VimState, startPos: Position, endPos: Position): Promise<void> {
-    for (const { start, end } of TextEditor.iterateLinesInBlock(vimState)) {
-      const range = new vscode.Range(start, end);
-      const text = vimState.document.getText(range);
-      await TextEditor.replace(vimState.editor, range, text.toUpperCase());
-    }
-
-    const cursorPosition = earlierOf(startPos, endPos);
-    vimState.cursorStopPosition = cursorPosition;
-    vimState.cursorStartPosition = cursorPosition;
-    await vimState.setCurrentMode(Mode.Normal);
-  }
-}
-
-@RegisterAction
-class LowerCaseOperator extends BaseOperator {
+class LowerCaseOperator extends ChangeCaseOperator {
   public keys = [['g', 'u'], ['u']];
-  public modes = [Mode.Visual, Mode.VisualLine];
 
-  public async run(vimState: VimState, start: Position, end: Position): Promise<void> {
-    if (vimState.effectiveRegisterMode === RegisterMode.LineWise) {
-      start = start.getLineBegin();
-      end = end.getLineEnd();
-    }
-
-    const range = new vscode.Range(start, new Position(end.line, end.character + 1));
-    const text = vimState.document.getText(range);
-
-    await TextEditor.replace(vimState.editor, range, text.toLowerCase());
-
-    await vimState.setCurrentMode(Mode.Normal);
-    vimState.cursorStopPosition = start;
-    vimState.desiredColumn = start.character;
+  public transformText(text: string): string {
+    return text.toLowerCase();
   }
 }
 
 @RegisterAction
 class LowerCaseWithMotion extends LowerCaseOperator {
-  public keys = [['g', 'u']];
-  public modes = [Mode.Normal];
+  public override keys = [['g', 'u']];
+  public override modes = [Mode.Normal];
 }
 
 @RegisterAction
-class LowerCaseVisualBlockOperator extends BaseOperator {
-  public keys = [['g', 'u'], ['u']];
-  public modes = [Mode.VisualBlock];
+class ToggleCaseOperator extends ChangeCaseOperator {
+  public keys = [['g', '~'], ['~']];
 
-  public async run(vimState: VimState, startPos: Position, endPos: Position): Promise<void> {
-    for (const { start, end } of TextEditor.iterateLinesInBlock(vimState)) {
-      const range = new vscode.Range(start, end);
-      const text = vimState.document.getText(range);
-      await TextEditor.replace(vimState.editor, range, text.toLowerCase());
+  public transformText(text: string): string {
+    let newText = '';
+    for (const char of text) {
+      let toggled = char.toLocaleLowerCase();
+      if (toggled === char) {
+        toggled = char.toLocaleUpperCase();
+      }
+      newText += toggled;
     }
-
-    const cursorPosition = earlierOf(startPos, endPos);
-    vimState.cursorStopPosition = cursorPosition;
-    vimState.cursorStartPosition = cursorPosition;
-    await vimState.setCurrentMode(Mode.Normal);
+    return newText;
   }
+}
+
+@RegisterAction
+class ToggleCaseWithMotion extends ToggleCaseOperator {
+  public override keys = [['g', '~']];
+  public override modes = [Mode.Normal];
 }
 
 @RegisterAction
@@ -624,7 +615,11 @@ export class ChangeOperator extends BaseOperator {
     }
   }
 
-  public async runRepeat(vimState: VimState, position: Position, count: number): Promise<void> {
+  public override async runRepeat(
+    vimState: VimState,
+    position: Position,
+    count: number
+  ): Promise<void> {
     const thisLineIndent = vimState.document.getText(
       new vscode.Range(
         position.getLineBegin(),
@@ -663,7 +658,7 @@ export class ChangeOperator extends BaseOperator {
 class YankVisualBlockMode extends BaseOperator {
   public keys = ['y'];
   public modes = [Mode.VisualBlock];
-  canBeRepeatedWithDot = false;
+  override canBeRepeatedWithDot = false;
   runsOnceForEveryCursor() {
     return false;
   }
@@ -691,69 +686,6 @@ class YankVisualBlockMode extends BaseOperator {
     await vimState.setCurrentMode(Mode.Normal);
     vimState.cursorStopPosition = startPos;
   }
-}
-
-@RegisterAction
-export class ToggleCaseOperator extends BaseOperator {
-  public keys = [['g', '~'], ['~']];
-  public modes = [Mode.Visual, Mode.VisualLine];
-
-  public async run(vimState: VimState, start: Position, end: Position): Promise<void> {
-    if (vimState.effectiveRegisterMode === RegisterMode.LineWise) {
-      start = start.getLineBegin();
-      end = end.getLineEnd();
-    }
-
-    const range = new vscode.Range(start, end.getRight());
-
-    await ToggleCaseOperator.toggleCase(vimState, range);
-
-    const cursorPosition = earlierOf(start, end);
-    vimState.cursorStopPosition = cursorPosition;
-    vimState.cursorStartPosition = cursorPosition;
-    vimState.desiredColumn = cursorPosition.character;
-    await vimState.setCurrentMode(Mode.Normal);
-  }
-
-  static async toggleCase(vimState: VimState, range: vscode.Range) {
-    const text = vimState.document.getText(range);
-
-    let newText = '';
-    for (const char of text) {
-      // Try lower-case
-      let toggled = char.toLocaleLowerCase();
-      if (toggled === char) {
-        // Try upper-case
-        toggled = char.toLocaleUpperCase();
-      }
-      newText += toggled;
-    }
-    await TextEditor.replace(vimState.editor, range, newText);
-  }
-}
-
-@RegisterAction
-class ToggleCaseVisualBlockOperator extends BaseOperator {
-  public keys = [['g', '~'], ['~']];
-  public modes = [Mode.VisualBlock];
-
-  public async run(vimState: VimState, startPos: Position, endPos: Position): Promise<void> {
-    for (const { start, end } of TextEditor.iterateLinesInBlock(vimState)) {
-      const range = new vscode.Range(start, end);
-      await ToggleCaseOperator.toggleCase(vimState, range);
-    }
-
-    const cursorPosition = earlierOf(startPos, endPos);
-    vimState.cursorStopPosition = cursorPosition;
-    vimState.cursorStartPosition = cursorPosition;
-    await vimState.setCurrentMode(Mode.Normal);
-  }
-}
-
-@RegisterAction
-class ToggleCaseWithMotion extends ToggleCaseOperator {
-  public keys = [['g', '~']];
-  public modes = [Mode.Normal];
 }
 
 @RegisterAction
@@ -787,11 +719,7 @@ export class ROT13Operator extends BaseOperator {
 
     for (const range of selections) {
       const original = vimState.document.getText(range);
-      vimState.recordedState.transformer.addTransformation({
-        type: 'replaceText',
-        text: ROT13Operator.rot13(original),
-        range: new Range(range.start, range.end),
-      });
+      vimState.recordedState.transformer.replace(range, ROT13Operator.rot13(original));
     }
   }
 
@@ -1148,7 +1076,7 @@ class ActionVisualReflowParagraph extends BaseOperator {
     vimState.recordedState.transformer.addTransformation({
       type: 'replaceText',
       text: textToReflow,
-      range: new Range(start, end),
+      range: new vscode.Range(start, end),
       // Move cursor to front of line to realign the view
       diff: PositionDiff.exactCharacter({ character: 0 }),
     });

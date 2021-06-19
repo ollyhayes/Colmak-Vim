@@ -4,7 +4,7 @@ import * as node from '../node';
 import { VimState } from '../../state/vimState';
 import { globalState } from '../../state/globalState';
 import { Jump } from '../../jumps/jump';
-import { Range } from '../../common/motion/range';
+import { Cursor } from '../../common/motion/cursor';
 
 class JumpPickItem implements QuickPickItem {
   jump: Jump;
@@ -28,6 +28,8 @@ class JumpPickItem implements QuickPickItem {
 }
 
 export class JumpsCommand extends node.CommandBase {
+  public override readonly acceptsRange = false;
+
   async execute(vimState: VimState): Promise<void> {
     const jumpTracker = globalState.jumpTracker;
     if (jumpTracker.hasJumps) {
@@ -37,7 +39,7 @@ export class JumpsCommand extends node.CommandBase {
       });
       if (item && item.jump.document !== undefined) {
         window.showTextDocument(item.jump.document);
-        vimState.cursors = [new Range(item.jump.position, item.jump.position)];
+        vimState.cursors = [new Cursor(item.jump.position, item.jump.position)];
       }
     } else {
       window.showInformationMessage('No jumps available');
@@ -46,6 +48,8 @@ export class JumpsCommand extends node.CommandBase {
 }
 
 export class ClearJumpsCommand extends node.CommandBase {
+  public override readonly acceptsRange = false;
+
   async execute(vimState: VimState): Promise<void> {
     const jumpTracker = globalState.jumpTracker;
     jumpTracker.clearJumps();
